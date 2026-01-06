@@ -1,0 +1,193 @@
+Starting
+Wed Dec 17 10:06:25 AM EST 2025
+Module loading
+Activating env
+Starting BERT Training
+Training on 8 GPUs with mixed precision
+Local rank: 0, Global rank: 0
+TensorBoard logs will be saved to: ./runs
+Run: tensorboard --logdir=./runs
+Loading dataset...
+Dataset info:
+  Type: <class 'datasets.arrow_dataset.Dataset'>
+  Length: 1374466, type: <class 'int'>
+  Features: {'input_ids': List(Value('int32')), 'attention_mask': List(Value('int8')), 'labels': List(Value('int64'))}
+
+Sample data:
+  input_ids: type=<class 'torch.Tensor'>, dtype=torch.int64
+  attention_mask: type=<class 'torch.Tensor'>, dtype=torch.int64
+  labels: type=<class 'torch.Tensor'>, dtype=torch.int64
+Initializing model...
+Tokenizing dataset...
+DEBUG: num_epochs = 20, type = <class 'int'>
+DEBUG: len(train_dataloader) = 5370, type = <class 'int'>
+DEBUG: gradient_accumulation_steps = 1, type = <class 'int'>
+DEBUG: num_training_steps = 107400, type = <class 'int'>
+DEBUG: lr = 5e-5, type = <class 'str'>
+DEBUG: max_lr = 1e-4, type = <class 'str'>
+DEBUG: pct_start = 0.05, type = <class 'float'>
+DEBUG: weight_decay = 0.01, type = <class 'float'>
+
+Starting training for 20 epochs
+Total training steps: 107400
+Steps per epoch: 5370
+Effective batch size: 256
+Mixed precision: True
+Gradient accumulation steps: 1
+
+Epoch 1/20
+Epoch 1 - Average Loss: 3.0418
+Running validation...
+Validation Loss: 2.4876
+
+Epoch 2/20
+Epoch 2 - Average Loss: 2.4623
+Running validation...
+Validation Loss: 2.2428
+
+Epoch 3/20
+Epoch 3 - Average Loss: 2.2960
+Running validation...
+Validation Loss: 2.1329
+
+Epoch 4/20
+Epoch 4 - Average Loss: 2.2092
+Running validation...
+Validation Loss: 2.0571
+
+Epoch 5/20
+Epoch 5 - Average Loss: 2.1456
+Checkpoint saved to: ./checkpoints/checkpoint_epoch_5.pt
+Running validation...
+Validation Loss: 2.0084
+
+Epoch 6/20
+Epoch 6 - Average Loss: 2.0978
+Running validation...
+Validation Loss: 1.9646
+
+Epoch 7/20
+Epoch 7 - Average Loss: 2.0629
+Running validation...
+Validation Loss: 1.9299
+
+Epoch 8/20
+Epoch 8 - Average Loss: 2.0293
+Running validation...
+Validation Loss: 1.9041
+
+Epoch 9/20
+Epoch 9 - Average Loss: 2.0004
+Running validation...
+Validation Loss: 1.8766
+
+Epoch 10/20
+Epoch 10 - Average Loss: 1.9794
+Checkpoint saved to: ./checkpoints/checkpoint_epoch_10.pt
+Running validation...
+Validation Loss: 1.8572
+
+Epoch 11/20
+Epoch 11 - Average Loss: 1.9601
+Running validation...
+Validation Loss: 1.8378
+
+Epoch 12/20
+Epoch 12 - Average Loss: 1.9398
+Running validation...
+Validation Loss: 1.8204
+
+Epoch 13/20
+Epoch 13 - Average Loss: 1.9237
+Running validation...
+Validation Loss: 1.8069
+
+Epoch 14/20
+Epoch 14 - Average Loss: 1.9098
+Running validation...
+Validation Loss: 1.7933
+
+Epoch 15/20
+Epoch 15 - Average Loss: 1.8966
+Checkpoint saved to: ./checkpoints/checkpoint_epoch_15.pt
+Running validation...
+Validation Loss: 1.7825
+
+Epoch 16/20
+Epoch 16 - Average Loss: 1.8929
+Running validation...
+Validation Loss: 1.7762
+
+Epoch 17/20
+Epoch 17 - Average Loss: 1.8824
+Running validation...
+Validation Loss: 1.7712
+
+Epoch 18/20
+Epoch 18 - Average Loss: 1.8765
+Running validation...
+Validation Loss: 1.7687
+
+Epoch 19/20
+Epoch 19 - Average Loss: 1.8751
+Running validation...
+Validation Loss: 1.7656
+
+Epoch 20/20
+Epoch 20 - Average Loss: 1.8723
+Checkpoint saved to: ./checkpoints/checkpoint_epoch_20.pt
+Running validation...
+Validation Loss: 1.7652
+
+Training complete! Final model saved to: ./checkpoints/final_model.pt
+Training finished
+Converting model to HuggingFace format
+Post-training with spaCy
+Activating env
+Starting post-training with spaCy
+[38;5;4mℹ Saving to output directory: output[0m
+[38;5;4mℹ Using GPU: 0[0m
+[1m
+=========================== Initializing pipeline ===========================[0m
+[38;5;2m✔ Initialized pipeline[0m
+[1m
+============================= Training pipeline =============================[0m
+[38;5;4mℹ Pipeline: ['transformer', 'tagger', 'morphologizer',
+'trainable_lemmatizer', 'parser'][0m
+[38;5;4mℹ Initial learn rate: 0.0[0m
+E    #       LOSS TRANS...  LOSS TAGGER  LOSS MORPH...  LOSS TRAIN...  LOSS PARSER  TAG_ACC  POS_ACC  MORPH_ACC  LEMMA_ACC  DEP_UAS  DEP_LAS  SENTS_F  SCORE 
+---  ------  -------------  -----------  -------------  -------------  -----------  -------  -------  ---------  ---------  -------  -------  -------  ------
+  0       0        1916.84      1483.22        1483.98        1484.80      2716.96     0.00    18.20       0.99      20.31     6.23     6.23     0.05    0.09
+  1     200      308602.79    355563.55      356271.17      356794.40    490173.36     8.14    12.11      32.12      20.28     9.67     5.18     0.03    0.14
+  2     400      268879.20    342978.77      351258.85      353711.99    333080.34     8.14    12.11      32.12      20.28    25.23    15.47     0.95    0.18
+  3     600      277635.30    315481.86      335462.30      334650.14    314207.24    34.82    37.15      33.24      20.29    37.75    25.83    10.75    0.30
+  4     800      305101.13    264119.15      306267.24      312234.39    301579.04    41.05    58.70      35.81      26.16    45.16    33.67    25.54    0.38
+  5    1000      336445.35    215310.47      276127.55      287856.08    288533.22    48.97    66.68      39.94      32.87    50.82    39.98    33.60    0.45
+  6    1200      369025.63    181098.41      255720.13      270435.50    274109.83    55.81    75.42      51.74      40.71    54.32    44.40    38.17    0.52
+  7    1400      406369.27    152636.77      228632.58      246721.43    259048.60    67.49    81.77      63.46      47.12    58.57    48.94    52.74    0.60
+  8    1600      434618.12    126970.17      198599.60      228623.31    245534.19    74.61    86.56      70.58      51.45    59.39    50.85    51.57    0.65
+  9    1800      468040.67    100428.83      169622.22      209525.23    235073.35    78.34    88.27      74.65      55.43    62.03    53.77    65.11    0.68
+ 10    2000      479333.42     82776.00      145957.83      195076.51    222557.89    81.44    90.77      77.63      57.43    63.71    55.80    64.81    0.71
+ 11    2200      490860.50     67836.17      127838.08      180401.64    211963.94    83.56    92.24      80.24      59.40    65.12    57.42    66.56    0.73
+ 12    2400      489889.57     57018.75      110806.74      167306.82    198480.92    85.09    93.07      82.22      60.85    64.99    57.71    60.74    0.74
+ 13    2600      499303.59     49685.04       98823.53      157713.56    192454.13    86.28    93.56      83.75      62.53    66.65    59.21    67.39    0.75
+ 14    2800      489455.66     42077.55       87285.92      149341.57    181053.87    86.69    93.70      85.25      63.92    67.23    60.07    63.24    0.76
+ 15    3000      497462.22     36804.43       77883.97      140809.40    174441.04    87.46    94.15      86.30      65.46    67.25    60.42    69.56    0.77
+ 16    3200      461717.64     31566.24       69068.49      132984.77    158863.19    87.82    94.11      87.10      66.09    68.50    61.38    68.52    0.77
+ 17    3400      466448.34     28912.44       62718.48      127066.07    154168.42    88.70    94.54      88.02      67.11    69.08    62.04    72.13    0.78
+ 18    3600      452764.74     24877.23       57234.62      122345.46    147317.20    88.68    94.38      88.43      67.93    69.26    62.37    69.29    0.78
+ 20    3800      420157.57     21385.52       50141.30      113892.60    134566.53    89.10    94.52      88.81      69.09    69.18    62.53    66.64    0.79
+ 21    4000      405459.05     19063.66       45740.44      109014.85    129109.22    89.34    94.62      89.18      69.42    69.70    63.06    73.04    0.79
+ 22    4200      386567.75     16716.85       41682.27      104637.62    121860.73    89.60    94.72      89.51      70.41    69.47    62.85    73.76    0.80
+ 23    4400      367561.79     14968.15       38074.01       99480.82    114681.64    89.69    94.74      89.74      70.67    69.50    62.75    73.57    0.80
+ 24    4600      346984.50     13201.91       35160.97       94628.54    107959.11    89.81    94.64      90.00      71.10    70.03    63.25    68.65    0.80
+ 25    4800      353378.58     11941.00       32190.79       89726.22    104813.78    89.72    94.56      89.98      72.08    69.81    63.05    74.21    0.80
+ 26    5000      336697.07     10702.84       29715.94       85918.72     99853.68    89.97    94.86      90.13      73.05    69.80    63.19    73.02    0.81
+ 27    5200      295619.28      9720.03       27191.33       81377.57     92922.07    89.84    94.72      90.14      73.27    69.98    63.27    73.42    0.81
+ 28    5400      286513.59      8828.73       25694.67       76970.03     88910.62    89.92    94.71      90.22      74.00    69.34    62.63    71.59    0.81
+ 29    5600      274831.67      7874.24       23516.04       72292.56     83243.77    90.08    94.75      90.45      74.08    69.90    63.32    70.36    0.81
+ 30    5800      269420.26      7507.89       22348.58       70052.72     80759.48    90.09    94.80      90.50      74.29    70.30    63.69    73.89    0.81
+ 31    6000      239999.66      6429.24       20466.15       65032.70     75965.18    90.04    94.70      90.61      74.64    69.77    63.12    73.46    0.81
+ 32    6200      222323.22      6131.84       18813.33       62189.09     70950.90    89.92    94.65      90.48      75.28    69.58    62.85    73.93    0.81
+ 33    6400      213983.75      5358.56       18020.95       59313.98     68375.47    90.20    94.74      90.66      75.61    69.74    63.11    73.39    0.81
+ 34    6600      202271.99      4909.47       16320.88       55660.45     64448.62    89.96    94.68      90.51      76.22    70.03    63.30    71.83    0.81

@@ -1,0 +1,13 @@
+lr: 5e-5
+mask_prob: 0.3
+batch_size: 32
+weight_decay: 0.01
+num_epochs: 30
+max_lr: 1e-4
+pct_start: 0.05
+log_interval: 100
+checkpoint_dir: "./checkpoints"
+tensorboard_dir: "./runs"
+use_mixed_precision: True
+gradient_accumulation_steps: 1
+pretrained_model: "nlpaueb/bert-base-greek-uncased-v1"
