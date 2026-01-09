@@ -51,7 +51,7 @@ def main():
     if is_main_process:
         print("Loading dataset...")
     
-    tokenized_datasets = load_from_disk("../data/nlpaueb_tokenized_open_greek_dataset")
+    tokenized_datasets = load_from_disk(hp_config.tokenized_dataset_path)
     tokenized_datasets = tokenized_datasets.remove_columns(
         [col for col in tokenized_datasets['train'].column_names if col not in ['input_ids', 'attention_mask', 'labels']]
     )

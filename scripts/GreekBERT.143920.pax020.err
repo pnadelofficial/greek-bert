@@ -1,0 +1,231 @@
+	Current module do not work with T4 GPUs
+W0108 09:47:48.338000 30038 site-packages/torch/distributed/run.py:803] 
+W0108 09:47:48.338000 30038 site-packages/torch/distributed/run.py:803] *****************************************
+W0108 09:47:48.338000 30038 site-packages/torch/distributed/run.py:803] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+W0108 09:47:48.338000 30038 site-packages/torch/distributed/run.py:803] *****************************************
+[rank6]: Traceback (most recent call last):
+[rank6]:   File "/cluster/tufts/tuftsai/pnadel01/greek-bert/scripts/train.py", line 317, in <module>
+[rank6]:     main()
+[rank6]:     ~~~~^^
+[rank6]:   File "/cluster/tufts/tuftsai/pnadel01/greek-bert/scripts/train.py", line 25, in main
+[rank6]:     rank, world_size, local_rank = setup_distributed()
+[rank6]:                                    ~~~~~~~~~~~~~~~~~^^
+[rank6]:   File "/cluster/tufts/tuftsai/pnadel01/greek-bert/scripts/utils.py", line 44, in setup_distributed
+[rank6]:     torch.cuda.set_device(local_rank)
+[rank6]:     ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+[rank6]:   File "/cluster/tufts/tuftsai/tools/ananconda/2023.07/envs/torchrun/lib/python3.13/site-packages/torch/cuda/__init__.py", line 567, in set_device
+[rank6]:     torch._C._cuda_setDevice(device)
+[rank6]:     ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^
+[rank6]: torch.AcceleratorError: CUDA error: invalid device ordinal
+[rank6]: GPU device may be out of range, do you have enough GPUs?
+[rank6]: CUDA kernel errors might be asynchronously reported at some other API call, so the stacktrace below might be incorrect.
+[rank6]: For debugging consider passing CUDA_LAUNCH_BLOCKING=1
+[rank6]: Compile with `TORCH_USE_CUDA_DSA` to enable device-side assertions.
+
+[rank5]: Traceback (most recent call last):
+[rank5]:   File "/cluster/tufts/tuftsai/pnadel01/greek-bert/scripts/train.py", line 317, in <module>
+[rank5]:     main()
+[rank5]:     ~~~~^^
+[rank5]:   File "/cluster/tufts/tuftsai/pnadel01/greek-bert/scripts/train.py", line 25, in main
+[rank5]:     rank, world_size, local_rank = setup_distributed()
+[rank5]:                                    ~~~~~~~~~~~~~~~~~^^
+[rank5]:   File "/cluster/tufts/tuftsai/pnadel01/greek-bert/scripts/utils.py", line 44, in setup_distributed
+[rank5]:     torch.cuda.set_device(local_rank)
+[rank5]:     ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+[rank5]:   File "/cluster/tufts/tuftsai/tools/ananconda/2023.07/envs/torchrun/lib/python3.13/site-packages/torch/cuda/__init__.py", line 567, in set_device
+[rank5]:     torch._C._cuda_setDevice(device)
+[rank5]:     ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^
+[rank5]: torch.AcceleratorError: CUDA error: invalid device ordinal
+[rank5]: GPU device may be out of range, do you have enough GPUs?
+[rank5]: CUDA kernel errors might be asynchronously reported at some other API call, so the stacktrace below might be incorrect.
+[rank5]: For debugging consider passing CUDA_LAUNCH_BLOCKING=1
+[rank5]: Compile with `TORCH_USE_CUDA_DSA` to enable device-side assertions.
+
+[rank4]: Traceback (most recent call last):
+[rank4]:   File "/cluster/tufts/tuftsai/pnadel01/greek-bert/scripts/train.py", line 317, in <module>
+[rank4]:     main()
+[rank4]:     ~~~~^^
+[rank4]:   File "/cluster/tufts/tuftsai/pnadel01/greek-bert/scripts/train.py", line 25, in main
+[rank4]:     rank, world_size, local_rank = setup_distributed()
+[rank4]:                                    ~~~~~~~~~~~~~~~~~^^
+[rank4]:   File "/cluster/tufts/tuftsai/pnadel01/greek-bert/scripts/utils.py", line 44, in setup_distributed
+[rank4]:     torch.cuda.set_device(local_rank)
+[rank4]:     ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+[rank4]:   File "/cluster/tufts/tuftsai/tools/ananconda/2023.07/envs/torchrun/lib/python3.13/site-packages/torch/cuda/__init__.py", line 567, in set_device
+[rank4]:     torch._C._cuda_setDevice(device)
+[rank4]:     ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^
+[rank4]: torch.AcceleratorError: CUDA error: invalid device ordinal
+[rank4]: GPU device may be out of range, do you have enough GPUs?
+[rank4]: CUDA kernel errors might be asynchronously reported at some other API call, so the stacktrace below might be incorrect.
+[rank4]: For debugging consider passing CUDA_LAUNCH_BLOCKING=1
+[rank4]: Compile with `TORCH_USE_CUDA_DSA` to enable device-side assertions.
+
+[rank7]: Traceback (most recent call last):
+[rank7]:   File "/cluster/tufts/tuftsai/pnadel01/greek-bert/scripts/train.py", line 317, in <module>
+[rank7]:     main()
+[rank7]:     ~~~~^^
+[rank7]:   File "/cluster/tufts/tuftsai/pnadel01/greek-bert/scripts/train.py", line 25, in main
+[rank7]:     rank, world_size, local_rank = setup_distributed()
+[rank7]:                                    ~~~~~~~~~~~~~~~~~^^
+[rank7]:   File "/cluster/tufts/tuftsai/pnadel01/greek-bert/scripts/utils.py", line 44, in setup_distributed
+[rank7]:     torch.cuda.set_device(local_rank)
+[rank7]:     ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+[rank7]:   File "/cluster/tufts/tuftsai/tools/ananconda/2023.07/envs/torchrun/lib/python3.13/site-packages/torch/cuda/__init__.py", line 567, in set_device
+[rank7]:     torch._C._cuda_setDevice(device)
+[rank7]:     ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^
+[rank7]: torch.AcceleratorError: CUDA error: invalid device ordinal
+[rank7]: GPU device may be out of range, do you have enough GPUs?
+[rank7]: CUDA kernel errors might be asynchronously reported at some other API call, so the stacktrace below might be incorrect.
+[rank7]: For debugging consider passing CUDA_LAUNCH_BLOCKING=1
+[rank7]: Compile with `TORCH_USE_CUDA_DSA` to enable device-side assertions.
+
+[rank4]:[W108 09:48:08.411975086 ProcessGroupNCCL.cpp:1524] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+W0108 09:48:12.664000 30038 site-packages/torch/distributed/elastic/multiprocessing/api.py:908] Sending process 30119 closing signal SIGTERM
+W0108 09:48:12.665000 30038 site-packages/torch/distributed/elastic/multiprocessing/api.py:908] Sending process 30120 closing signal SIGTERM
+W0108 09:48:12.665000 30038 site-packages/torch/distributed/elastic/multiprocessing/api.py:908] Sending process 30121 closing signal SIGTERM
+W0108 09:48:12.666000 30038 site-packages/torch/distributed/elastic/multiprocessing/api.py:908] Sending process 30122 closing signal SIGTERM
+E0108 09:48:12.943000 30038 site-packages/torch/distributed/elastic/multiprocessing/api.py:882] failed (exitcode: 1) local_rank: 4 (pid: 30123) of binary: /cluster/tufts/tuftsai/tools/ananconda/2023.07/envs/torchrun/bin/python3.13
+Traceback (most recent call last):
+  File "/cluster/tufts/tuftsai/tools/ananconda/2023.07/envs/torchrun/bin/torchrun", line 7, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/cluster/tufts/tuftsai/tools/ananconda/2023.07/envs/torchrun/lib/python3.13/site-packages/torch/distributed/elastic/multiprocessing/errors/__init__.py", line 357, in wrapper
+    return f(*args, **kwargs)
+  File "/cluster/tufts/tuftsai/tools/ananconda/2023.07/envs/torchrun/lib/python3.13/site-packages/torch/distributed/run.py", line 936, in main
+    run(args)
+    ~~~^^^^^^
+  File "/cluster/tufts/tuftsai/tools/ananconda/2023.07/envs/torchrun/lib/python3.13/site-packages/torch/distributed/run.py", line 927, in run
+    elastic_launch(
+    ~~~~~~~~~~~~~~~
+        config=config,
+        ~~~~~~~~~~~~~~
+        entrypoint=cmd,
+        ~~~~~~~~~~~~~~~
+    )(*cmd_args)
+    ~^^^^^^^^^^^
+  File "/cluster/tufts/tuftsai/tools/ananconda/2023.07/envs/torchrun/lib/python3.13/site-packages/torch/distributed/launcher/api.py", line 156, in __call__
+    return launch_agent(self._config, self._entrypoint, list(args))
+  File "/cluster/tufts/tuftsai/tools/ananconda/2023.07/envs/torchrun/lib/python3.13/site-packages/torch/distributed/launcher/api.py", line 293, in launch_agent
+    raise ChildFailedError(
+    ...<2 lines>...
+    )
+torch.distributed.elastic.multiprocessing.errors.ChildFailedError: 
+============================================================
+train.py FAILED
+------------------------------------------------------------
+Failures:
+[1]:
+  time      : 2026-01-08_09:48:12
+  host      : pax020
+  rank      : 5 (local_rank: 5)
+  exitcode  : 1 (pid: 30124)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+[2]:
+  time      : 2026-01-08_09:48:12
+  host      : pax020
+  rank      : 6 (local_rank: 6)
+  exitcode  : 1 (pid: 30125)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+[3]:
+  time      : 2026-01-08_09:48:12
+  host      : pax020
+  rank      : 7 (local_rank: 7)
+  exitcode  : 1 (pid: 30126)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+------------------------------------------------------------
+Root Cause (first observed failure):
+[0]:
+  time      : 2026-01-08_09:48:12
+  host      : pax020
+  rank      : 4 (local_rank: 4)
+  exitcode  : 1 (pid: 30123)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+============================================================
+Traceback (most recent call last):
+  File "/cluster/tufts/tuftsai/pnadel01/greek-bert/scripts/convert_pt_to_transformers.py", line 8, in <module>
+    checkpoint = torch.load("/cluster/tufts/tuftsai/pnadel01/greek_bert/scripts/checkpoints/final_model.pt")
+  File "/cluster/tufts/tuftsai/tools/ananconda/2023.07/envs/torchrun/lib/python3.13/site-packages/torch/serialization.py", line 1484, in load
+    with _open_file_like(f, "rb") as opened_file:
+         ~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/cluster/tufts/tuftsai/tools/ananconda/2023.07/envs/torchrun/lib/python3.13/site-packages/torch/serialization.py", line 759, in _open_file_like
+    return _open_file(name_or_buffer, mode)
+  File "/cluster/tufts/tuftsai/tools/ananconda/2023.07/envs/torchrun/lib/python3.13/site-packages/torch/serialization.py", line 740, in __init__
+    super().__init__(open(name, mode))
+                     ~~~~^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/cluster/tufts/tuftsai/pnadel01/greek_bert/scripts/checkpoints/final_model.pt'
+DeprecationWarning: 'source deactivate' is deprecated. Use 'conda deactivate'.
+Traceback (most recent call last):
+  File "/cluster/tufts/tuftsai/tools/ananconda/2023.07/envs/spacy_gpu/lib/python3.12/site-packages/transformers/utils/hub.py", line 342, in cached_file
+    resolved_file = hf_hub_download(
+                    ^^^^^^^^^^^^^^^^
+  File "/cluster/tufts/tuftsai/tools/ananconda/2023.07/envs/spacy_gpu/lib/python3.12/site-packages/huggingface_hub/utils/_validators.py", line 106, in _inner_fn
+    validate_repo_id(arg_value)
+  File "/cluster/tufts/tuftsai/tools/ananconda/2023.07/envs/spacy_gpu/lib/python3.12/site-packages/huggingface_hub/utils/_validators.py", line 154, in validate_repo_id
+    raise HFValidationError(
+huggingface_hub.errors.HFValidationError: Repo id must be in the form 'repo_name' or 'namespace/repo_name': '/cluster/tufts/tuftsai/pnadel01/greek_bert/hf_format'. Use `repo_type` argument if needed.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/cluster/tufts/tuftsai/tools/ananconda/2023.07/envs/spacy_gpu/bin/spacy", line 7, in <module>
+    sys.exit(setup_cli())
+             ^^^^^^^^^^^
+  File "/cluster/tufts/tuftsai/tools/ananconda/2023.07/envs/spacy_gpu/lib/python3.12/site-packages/spacy/cli/_util.py", line 87, in setup_cli
+    command(prog_name=COMMAND)
+  File "/cluster/tufts/tuftsai/tools/ananconda/2023.07/envs/spacy_gpu/lib/python3.12/site-packages/click/core.py", line 1485, in __call__
+    return self.main(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/cluster/tufts/tuftsai/tools/ananconda/2023.07/envs/spacy_gpu/lib/python3.12/site-packages/typer/core.py", line 803, in main
+    return _main(
+           ^^^^^^
+  File "/cluster/tufts/tuftsai/tools/ananconda/2023.07/envs/spacy_gpu/lib/python3.12/site-packages/typer/core.py", line 192, in _main
+    rv = self.invoke(ctx)
+         ^^^^^^^^^^^^^^^^
+  File "/cluster/tufts/tuftsai/tools/ananconda/2023.07/envs/spacy_gpu/lib/python3.12/site-packages/click/core.py", line 1873, in invoke
+    return _process_result(sub_ctx.command.invoke(sub_ctx))
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/cluster/tufts/tuftsai/tools/ananconda/2023.07/envs/spacy_gpu/lib/python3.12/site-packages/click/core.py", line 1269, in invoke
+    return ctx.invoke(self.callback, **ctx.params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/cluster/tufts/tuftsai/tools/ananconda/2023.07/envs/spacy_gpu/lib/python3.12/site-packages/click/core.py", line 824, in invoke
+    return callback(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/cluster/tufts/tuftsai/tools/ananconda/2023.07/envs/spacy_gpu/lib/python3.12/site-packages/typer/main.py", line 691, in wrapper
+    return callback(**use_params)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/cluster/tufts/tuftsai/tools/ananconda/2023.07/envs/spacy_gpu/lib/python3.12/site-packages/spacy/cli/train.py", line 54, in train_cli
+    train(config_path, output_path, use_gpu=use_gpu, overrides=overrides)
+  File "/cluster/tufts/tuftsai/tools/ananconda/2023.07/envs/spacy_gpu/lib/python3.12/site-packages/spacy/cli/train.py", line 81, in train
+    nlp = init_nlp(config, use_gpu=use_gpu)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/cluster/tufts/tuftsai/tools/ananconda/2023.07/envs/spacy_gpu/lib/python3.12/site-packages/spacy/training/initialize.py", line 95, in init_nlp
+    nlp.initialize(lambda: train_corpus(nlp), sgd=optimizer)
+  File "/cluster/tufts/tuftsai/tools/ananconda/2023.07/envs/spacy_gpu/lib/python3.12/site-packages/spacy/language.py", line 1353, in initialize
+    proc.initialize(get_examples, nlp=self, **p_settings)
+  File "/cluster/tufts/tuftsai/tools/ananconda/2023.07/envs/spacy_gpu/lib/python3.12/site-packages/spacy_transformers/pipeline_component.py", line 351, in initialize
+    self.model.initialize(X=docs)
+  File "/cluster/tufts/tuftsai/tools/ananconda/2023.07/envs/spacy_gpu/lib/python3.12/site-packages/thinc/model.py", line 318, in initialize
+    self.init(self, X=X, Y=Y)
+  File "/cluster/tufts/tuftsai/tools/ananconda/2023.07/envs/spacy_gpu/lib/python3.12/site-packages/spacy_transformers/layers/transformer_model.py", line 131, in init
+    hf_model = huggingface_from_pretrained(name, tok_cfg, trf_cfg)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/cluster/tufts/tuftsai/tools/ananconda/2023.07/envs/spacy_gpu/lib/python3.12/site-packages/spacy_transformers/layers/transformer_model.py", line 267, in huggingface_from_pretrained
+    tokenizer = tokenizer_cls.from_pretrained(str_path, **tok_config)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/cluster/tufts/tuftsai/tools/ananconda/2023.07/envs/spacy_gpu/lib/python3.12/site-packages/transformers/models/auto/tokenization_auto.py", line 881, in from_pretrained
+    tokenizer_config = get_tokenizer_config(pretrained_model_name_or_path, **kwargs)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/cluster/tufts/tuftsai/tools/ananconda/2023.07/envs/spacy_gpu/lib/python3.12/site-packages/transformers/models/auto/tokenization_auto.py", line 713, in get_tokenizer_config
+    resolved_config_file = cached_file(
+                           ^^^^^^^^^^^^
+  File "/cluster/tufts/tuftsai/tools/ananconda/2023.07/envs/spacy_gpu/lib/python3.12/site-packages/transformers/utils/hub.py", line 408, in cached_file
+    raise EnvironmentError(
+OSError: Incorrect path_or_model_id: '/cluster/tufts/tuftsai/pnadel01/greek_bert/hf_format'. Please provide either the path to a local folder or the repo_id of a model on the Hub.
+/cluster/tufts/tuftsai/tools/ananconda/2023.07/envs/spacy_gpu/lib/python3.12/site-packages/spacy_transformers/layers/hf_shim.py:124: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self._model.load_state_dict(torch.load(filelike, map_location=device))
+/cluster/tufts/tuftsai/tools/ananconda/2023.07/envs/spacy_gpu/lib/python3.12/site-packages/torch/_inductor/compile_fx.py:167: UserWarning: TensorFloat32 tensor cores for float32 matrix multiplication available but not enabled. Consider setting `torch.set_float32_matmul_precision('high')` for better performance.
+  warnings.warn(

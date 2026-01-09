@@ -1,0 +1,38 @@
+Starting
+Thu Jan  8 09:51:37 AM EST 2026
+Module loading
+Activating env
+Starting BERT Training
+Training on 4 GPUs with mixed precision
+Local rank: 0, Global rank: 0
+TensorBoard logs will be saved to: ./runs
+Run: tensorboard --logdir=./runs
+Loading dataset...
+Dataset info:
+  Type: <class 'datasets.arrow_dataset.Dataset'>
+  Length: 1360380, type: <class 'int'>
+  Features: {'input_ids': List(Value('int32')), 'attention_mask': List(Value('int8')), 'labels': List(Value('int64'))}
+
+Sample data:
+  input_ids: type=<class 'torch.Tensor'>, dtype=torch.int64
+  attention_mask: type=<class 'torch.Tensor'>, dtype=torch.int64
+  labels: type=<class 'torch.Tensor'>, dtype=torch.int64
+Initializing model...
+Tokenizing dataset...
+DEBUG: num_epochs = 30, type = <class 'int'>
+DEBUG: len(train_dataloader) = 10628, type = <class 'int'>
+DEBUG: gradient_accumulation_steps = 1, type = <class 'int'>
+DEBUG: num_training_steps = 318840, type = <class 'int'>
+DEBUG: lr = 5e-5, type = <class 'str'>
+DEBUG: max_lr = 1e-4, type = <class 'str'>
+DEBUG: pct_start = 0.05, type = <class 'float'>
+DEBUG: weight_decay = 0.01, type = <class 'float'>
+
+Starting training for 30 epochs
+Total training steps: 318840
+Steps per epoch: 10628
+Effective batch size: 128
+Mixed precision: True
+Gradient accumulation steps: 1
+
+Epoch 1/30

@@ -1,0 +1,110 @@
+Starting
+Thu Jan  8 09:47:36 AM EST 2026
+Module loading
+Activating env
+Starting BERT Training
+Training on 8 GPUs with mixed precision
+Local rank: 0, Global rank: 0
+TensorBoard logs will be saved to: ./runs
+Run: tensorboard --logdir=./runs
+Loading dataset...
+Dataset info:
+  Type: <class 'datasets.arrow_dataset.Dataset'>
+  Length: 1360380, type: <class 'int'>
+  Features: {'input_ids': List(Value('int32')), 'attention_mask': List(Value('int8')), 'labels': List(Value('int64'))}
+
+Sample data:
+  input_ids: type=<class 'torch.Tensor'>, dtype=torch.int64
+  attention_mask: type=<class 'torch.Tensor'>, dtype=torch.int64
+  labels: type=<class 'torch.Tensor'>, dtype=torch.int64
+Initializing model...
+Training finished
+Converting model to HuggingFace format
+Post-training with spaCy
+Activating env
+Starting post-training with spaCy
+[38;5;4mℹ Saving to output directory: output[0m
+[38;5;4mℹ Using GPU: 0[0m
+[1m
+=========================== Initializing pipeline ===========================[0m
+Post-training finished
+Evaluating spaCy model
+[38;5;4mℹ Using GPU: 0[0m
+[1m
+================================== Results ==================================[0m
+
+TOK      99.99
+TAG      88.51
+POS      93.41
+MORPH    89.64
+LEMMA    79.50
+UAS      68.26
+LAS      61.37
+SENT P   71.17
+SENT R   72.59
+SENT F   71.87
+SPEED    1613 
+
+[1m
+============================== MORPH (per feat) ==============================[0m
+
+                P       R       F
+Mood        96.35   95.82   96.09
+Number      98.28   97.60   97.94
+Person      96.30   94.19   95.23
+Tense       94.96   94.16   94.56
+VerbForm    97.51   96.72   97.11
+Voice       94.67   93.86   94.26
+Case        96.06   95.40   95.73
+Gender      91.56   91.04   91.30
+Aspect      92.64   92.72   92.68
+PronType    96.94   96.45   96.70
+Reflex      93.62   95.65   94.62
+Degree      82.58   80.65   81.60
+Definite    98.01   98.89   98.45
+Polarity    99.52   94.57   96.98
+Poss       100.00   38.46   55.56
+
+[1m
+=============================== LAS (per type) ===============================[0m
+
+                  P       R       F
+root          75.70   77.18   76.43
+advmod        57.93   53.94   55.86
+nsubj         59.16   59.38   59.27
+det           82.29   81.57   81.93
+nmod          48.52   51.72   50.07
+obj           58.62   60.93   59.75
+advcl         53.49   50.64   52.02
+cc            61.35   65.30   63.26
+conj          43.10   41.18   42.12
+amod          48.43   41.73   44.83
+cop           60.76   55.31   57.91
+obl           54.80   50.70   52.67
+case          86.55   86.43   86.49
+xcomp         32.04   35.92   33.87
+csubj         11.69   18.75   14.40
+mark          70.02   70.86   70.44
+ccomp         37.86   35.02   36.39
+dep            0.00    0.00    0.00
+iobj          37.93   33.33   35.48
+acl           24.81   19.22   21.66
+discourse     71.24   69.80   70.51
+vocative      37.96   35.34   36.61
+nummod        55.32   71.23   62.28
+appos         22.98   21.26   22.09
+parataxis      3.12    3.12    3.12
+csubj:pass     0.00    0.00    0.00
+orphan        10.20    7.69    8.77
+nsubj:outer    0.00    0.00    0.00
+obl:arg       61.63   62.88   62.25
+nsubj:pass    54.02   49.47   51.65
+dislocated     4.35    3.70    4.00
+advcl:cmp     25.00   19.05   21.62
+obl:agent     31.82   31.82   31.82
+fixed         20.00    9.09   12.50
+flat:name     66.67   57.14   61.54
+aux            0.00    0.00    0.00
+aux:pass       0.00    0.00    0.00
+
+Evaluation finished

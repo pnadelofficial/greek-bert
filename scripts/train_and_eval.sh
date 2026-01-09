@@ -6,8 +6,8 @@
 #SBATCH --gres=gpu:h200:8
 #SBATCH --qos=expanded
 #SBATCH -N 1
-#SBATCH -n 64
-#SBATCH --mem=128g 
+#SBATCH -n 16
+#SBATCH --mem=32g 
 #SBATCH --output=GreekBERT.%j.%N.out
 #SBATCH --error=GreekBERT.%j.%N.err
 #SBATCH --mail-type=ALL   
@@ -29,7 +29,7 @@ torchrun --standalone --nnodes 1 --nproc_per_node=$NUM_GPUS train.py --config-pa
 echo "Training finished"
 
 echo "Converting model to HuggingFace format"
-python convert_pt_to_transformers.py
+python convert_pt_to_transformers.py --config-path=train_config.yaml
 
 echo "Post-training with spaCy"
 source deactivate
@@ -37,10 +37,15 @@ source deactivate
 echo "Activating env"
 source activate spacy_gpu
 
-echo "Starting post-training with spaCy"
-cd ../spacy
-spacy train configs/gpu_default.cfg --paths.train corpus/train.spacy --paths.dev corpus/dev.spacy --gpu-id 0 --output ./output
+echo "Starting post-training with WSD"
+cd ../wsd
+python wsd.py
 echo "Post-training finished"
-echo "Evaluating spaCy model"
-spacy evaluate ./output/model-best corpus/test.spacy --gpu-id 0
-echo "Evaluation finished"
+
+# echo "Starting post-training with spaCy"
+# cd ../spacy
+# spacy train configs/gpu_default.cfg --paths.train corpus/train.spacy --paths.dev corpus/dev.spacy --gpu-id 0 --output ./output
+# echo "Post-training finished"
+# echo "Evaluating spaCy model"
+# spacy evaluate ./output/model-best corpus/test.spacy --gpu-id 0 --output ./output/eval_results.json
+# echo "Evaluation finished"
