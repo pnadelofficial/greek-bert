@@ -211,6 +211,8 @@ data/
 hf_format/
 scripts/checkpoints/
 spacy/output/
+spacy/assets/
+spacy/corpus/
 wsd/*wsd_model/
 wsd/glaux
 wsd/ancient-greek-wsd-data
