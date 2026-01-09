@@ -37,15 +37,10 @@ source deactivate
 echo "Activating env"
 source activate spacy_gpu
 
-echo "Starting post-training with WSD"
-cd ../wsd
-python wsd.py
+echo "Starting post-training with spaCy"
+cd ../spacy
+spacy train configs/gpu_default.cfg --paths.train corpus/train.spacy --paths.dev corpus/dev.spacy --gpu-id 0 --output ./output
 echo "Post-training finished"
-
-# echo "Starting post-training with spaCy"
-# cd ../spacy
-# spacy train configs/gpu_default.cfg --paths.train corpus/train.spacy --paths.dev corpus/dev.spacy --gpu-id 0 --output ./output
-# echo "Post-training finished"
-# echo "Evaluating spaCy model"
-# spacy evaluate ./output/model-best corpus/test.spacy --gpu-id 0 --output ./output/eval_results.json
-# echo "Evaluation finished"
+echo "Evaluating spaCy model"
+spacy evaluate ./output/model-best corpus/test.spacy --gpu-id 0 --output ./output/eval_results.json
+echo "Evaluation finished"
