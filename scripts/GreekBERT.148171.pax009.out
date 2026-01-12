@@ -1,0 +1,385 @@
+Starting
+Fri Jan  9 02:55:48 PM EST 2026
+Module loading
+Activating env
+Starting BERT Training
+Training on 8 GPUs with mixed precision
+Local rank: 0, Global rank: 0
+TensorBoard logs will be saved to: ./runs
+Run: tensorboard --logdir=./runs
+Loading dataset...
+Dataset info:
+  Type: <class 'datasets.arrow_dataset.Dataset'>
+  Length: 1360380, type: <class 'int'>
+  Features: {'input_ids': List(Value('int32')), 'attention_mask': List(Value('int8')), 'labels': List(Value('int64'))}
+
+Sample data:
+  input_ids: type=<class 'torch.Tensor'>, dtype=torch.int64
+  attention_mask: type=<class 'torch.Tensor'>, dtype=torch.int64
+  labels: type=<class 'torch.Tensor'>, dtype=torch.int64
+Initializing model...
+Tokenizing dataset...
+DEBUG: num_epochs = 10, type = <class 'int'>
+DEBUG: len(train_dataloader) = 10628, type = <class 'int'>
+DEBUG: gradient_accumulation_steps = 1, type = <class 'int'>
+DEBUG: num_training_steps = 106280, type = <class 'int'>
+DEBUG: lr = 5e-5, type = <class 'str'>
+DEBUG: max_lr = 1e-4, type = <class 'str'>
+DEBUG: pct_start = 0.05, type = <class 'float'>
+DEBUG: weight_decay = 0.01, type = <class 'float'>
+
+Starting training for 10 epochs
+Total training steps: 106280
+Steps per epoch: 10628
+Effective batch size: 128
+Mixed precision: True
+Gradient accumulation steps: 1
+
+Epoch 1/10
+Epoch 1 - Average Loss: 2.1428
+Running validation...
+Validation Loss: 1.7592
+
+Epoch 2/10
+Epoch 2 - Average Loss: 1.8030
+Running validation...
+Validation Loss: 1.6433
+
+Epoch 3/10
+Epoch 3 - Average Loss: 1.7133
+Running validation...
+Validation Loss: 1.5759
+
+Epoch 4/10
+Epoch 4 - Average Loss: 1.6485
+Running validation...
+Validation Loss: 1.5205
+
+Epoch 5/10
+Epoch 5 - Average Loss: 1.5989
+Checkpoint saved to: ./checkpoints/checkpoint_epoch_5.pt
+Running validation...
+Validation Loss: 1.4759
+
+Epoch 6/10
+Epoch 6 - Average Loss: 1.5608
+Running validation...
+Validation Loss: 1.4423
+
+Epoch 7/10
+Epoch 7 - Average Loss: 1.5263
+Running validation...
+Validation Loss: 1.4158
+
+Epoch 8/10
+Epoch 8 - Average Loss: 1.5013
+Running validation...
+Validation Loss: 1.3969
+
+Epoch 9/10
+Epoch 9 - Average Loss: 1.4855
+Running validation...
+Validation Loss: 1.3880
+
+Epoch 10/10
+Epoch 10 - Average Loss: 1.4791
+Checkpoint saved to: ./checkpoints/checkpoint_epoch_10.pt
+Running validation...
+Validation Loss: 1.3869
+
+Training complete! Final model saved to: ./checkpoints/final_model.pt
+Training finished
+Converting model to HuggingFace format
+Post-training with WSD
+Activating env
+Starting post-training with WSD
+Loading our model and tokenizer...
+Preparing dataset for 'ἁρμονιά'...
+Warning: 14 glaux_ids not found in glaux data.
+Loaded 538 examples for target word 'ἁρμονιά'.
+Epoch 1: Train Loss=1.2001, Train Acc=0.4186
+Epoch 1: Val Loss=1.1155, Val Acc=0.3796
+Saved best model with Val Acc=0.3796 at epoch 1.
+Epoch 2: Train Loss=0.9365, Train Acc=0.5372
+Epoch 2: Val Loss=0.8287, Val Acc=0.5185
+Saved best model with Val Acc=0.5185 at epoch 2.
+Epoch 3: Train Loss=0.8019, Train Acc=0.6140
+Epoch 3: Val Loss=0.7876, Val Acc=0.5741
+Saved best model with Val Acc=0.5741 at epoch 3.
+Epoch 4: Train Loss=0.6101, Train Acc=0.7930
+Epoch 4: Val Loss=0.7055, Val Acc=0.7037
+Saved best model with Val Acc=0.7037 at epoch 4.
+Epoch 5: Train Loss=0.3659, Train Acc=0.8907
+Epoch 5: Val Loss=0.5120, Val Acc=0.7778
+Saved best model with Val Acc=0.7778 at epoch 5.
+Epoch 6: Train Loss=0.2039, Train Acc=0.9535
+Epoch 6: Val Loss=0.4715, Val Acc=0.7963
+Saved best model with Val Acc=0.7963 at epoch 6.
+Epoch 7: Train Loss=0.1170, Train Acc=0.9791
+Epoch 7: Val Loss=0.4216, Val Acc=0.8611
+Saved best model with Val Acc=0.8611 at epoch 7.
+Epoch 8: Train Loss=0.0651, Train Acc=0.9930
+Epoch 8: Val Loss=0.4446, Val Acc=0.8426
+Epoch 9: Train Loss=0.0385, Train Acc=0.9930
+Epoch 9: Val Loss=0.5232, Val Acc=0.8426
+Epoch 10: Train Loss=0.0265, Train Acc=1.0000
+Epoch 10: Val Loss=0.5083, Val Acc=0.8519
+Training complete. Best Val Acc: 0.8611
+Preparing dataset for 'κόσμος'...
+Warning: 25 glaux_ids not found in glaux data.
+Loaded 1375 examples for target word 'κόσμος'.
+Epoch 1: Train Loss=0.9483, Train Acc=0.5345
+Epoch 1: Val Loss=0.6150, Val Acc=0.7455
+Saved best model with Val Acc=0.7455 at epoch 1.
+Epoch 2: Train Loss=0.4863, Train Acc=0.8273
+Epoch 2: Val Loss=0.3977, Val Acc=0.8436
+Saved best model with Val Acc=0.8436 at epoch 2.
+Epoch 3: Train Loss=0.2894, Train Acc=0.9036
+Epoch 3: Val Loss=0.4092, Val Acc=0.8509
+Saved best model with Val Acc=0.8509 at epoch 3.
+Epoch 4: Train Loss=0.1545, Train Acc=0.9518
+Epoch 4: Val Loss=0.4888, Val Acc=0.8800
+Saved best model with Val Acc=0.8800 at epoch 4.
+Epoch 5: Train Loss=0.0925, Train Acc=0.9682
+Epoch 5: Val Loss=0.5858, Val Acc=0.8655
+Epoch 6: Train Loss=0.0430, Train Acc=0.9873
+Epoch 6: Val Loss=0.7152, Val Acc=0.8509
+Epoch 7: Train Loss=0.0181, Train Acc=0.9936
+Epoch 7: Val Loss=0.7470, Val Acc=0.8509
+Epoch 8: Train Loss=0.0076, Train Acc=0.9973
+Epoch 8: Val Loss=0.7191, Val Acc=0.8691
+Epoch 9: Train Loss=0.0042, Train Acc=0.9973
+Epoch 9: Val Loss=0.7521, Val Acc=0.8655
+Epoch 10: Train Loss=0.0020, Train Acc=1.0000
+Epoch 10: Val Loss=0.7312, Val Acc=0.8655
+Training complete. Best Val Acc: 0.8800
+Loading Jacobo model and tokenizer...
+Preparing dataset for 'ἁρμονιά' with Jacobo model...
+Warning: 14 glaux_ids not found in glaux data.
+Loaded 538 examples for target word 'ἁρμονιά'.
+Epoch 1: Train Loss=1.1149, Train Acc=0.3721
+Epoch 1: Val Loss=1.0138, Val Acc=0.4074
+Saved best model with Val Acc=0.4074 at epoch 1.
+Epoch 2: Train Loss=0.9449, Train Acc=0.4512
+Epoch 2: Val Loss=0.9231, Val Acc=0.4259
+Saved best model with Val Acc=0.4259 at epoch 2.
+Epoch 3: Train Loss=0.7963, Train Acc=0.6047
+Epoch 3: Val Loss=0.8653, Val Acc=0.4907
+Saved best model with Val Acc=0.4907 at epoch 3.
+Epoch 4: Train Loss=0.6667, Train Acc=0.7651
+Epoch 4: Val Loss=0.8249, Val Acc=0.5185
+Saved best model with Val Acc=0.5185 at epoch 4.
+Epoch 5: Train Loss=0.4670, Train Acc=0.8930
+Epoch 5: Val Loss=0.7420, Val Acc=0.6019
+Saved best model with Val Acc=0.6019 at epoch 5.
+Epoch 6: Train Loss=0.2873, Train Acc=0.9419
+Epoch 6: Val Loss=0.6345, Val Acc=0.6481
+Saved best model with Val Acc=0.6481 at epoch 6.
+Epoch 7: Train Loss=0.1817, Train Acc=0.9744
+Epoch 7: Val Loss=0.5363, Val Acc=0.7500
+Saved best model with Val Acc=0.7500 at epoch 7.
+Epoch 8: Train Loss=0.1186, Train Acc=0.9860
+Epoch 8: Val Loss=0.5079, Val Acc=0.7685
+Saved best model with Val Acc=0.7685 at epoch 8.
+Epoch 9: Train Loss=0.0783, Train Acc=0.9953
+Epoch 9: Val Loss=0.5337, Val Acc=0.7685
+Epoch 10: Train Loss=0.0692, Train Acc=0.9953
+Epoch 10: Val Loss=0.5242, Val Acc=0.7685
+Training complete. Best Val Acc: 0.7685
+Preparing dataset for 'κόσμος' with Jacobo model...
+Warning: 25 glaux_ids not found in glaux data.
+Loaded 1375 examples for target word 'κόσμος'.
+Epoch 1: Train Loss=1.1487, Train Acc=0.3864
+Epoch 1: Val Loss=0.8815, Val Acc=0.6400
+Saved best model with Val Acc=0.6400 at epoch 1.
+Epoch 2: Train Loss=0.5947, Train Acc=0.7727
+Epoch 2: Val Loss=0.4371, Val Acc=0.8473
+Saved best model with Val Acc=0.8473 at epoch 2.
+Epoch 3: Train Loss=0.3256, Train Acc=0.8818
+Epoch 3: Val Loss=0.3764, Val Acc=0.8655
+Saved best model with Val Acc=0.8655 at epoch 3.
+Epoch 4: Train Loss=0.2007, Train Acc=0.9264
+Epoch 4: Val Loss=0.4308, Val Acc=0.8364
+Epoch 5: Train Loss=0.1086, Train Acc=0.9718
+Epoch 5: Val Loss=0.4663, Val Acc=0.8655
+Epoch 6: Train Loss=0.0576, Train Acc=0.9845
+Epoch 6: Val Loss=0.5407, Val Acc=0.8727
+Saved best model with Val Acc=0.8727 at epoch 6.
+Epoch 7: Train Loss=0.0326, Train Acc=0.9900
+Epoch 7: Val Loss=0.5820, Val Acc=0.8691
+Epoch 8: Train Loss=0.0197, Train Acc=0.9918
+Epoch 8: Val Loss=0.6456, Val Acc=0.8727
+Epoch 9: Train Loss=0.0144, Train Acc=0.9955
+Epoch 9: Val Loss=0.6836, Val Acc=0.8691
+Epoch 10: Train Loss=0.0094, Train Acc=0.9973
+Epoch 10: Val Loss=0.6810, Val Acc=0.8655
+Training complete. Best Val Acc: 0.8727
+Post-training with WSD finished
+Post-training with spaCy
+Activating env
+Starting post-training with spaCy
+[38;5;4mℹ Saving to output directory: output[0m
+[38;5;4mℹ Using GPU: 0[0m
+[1m
+=========================== Initializing pipeline ===========================[0m
+[38;5;2m✔ Initialized pipeline[0m
+[1m
+============================= Training pipeline =============================[0m
+[38;5;4mℹ Pipeline: ['transformer', 'tagger', 'morphologizer',
+'trainable_lemmatizer', 'parser'][0m
+[38;5;4mℹ Initial learn rate: 0.0[0m
+E    #       LOSS TRANS...  LOSS TAGGER  LOSS MORPH...  LOSS TRAIN...  LOSS PARSER  TAG_ACC  POS_ACC  MORPH_ACC  LEMMA_ACC  DEP_UAS  DEP_LAS  SENTS_F  SCORE 
+---  ------  -------------  -----------  -------------  -------------  -----------  -------  -------  ---------  ---------  -------  -------  -------  ------
+  0       0         506.25       337.65         352.67         352.91       706.57     5.11     4.53       2.28      16.01     7.46     7.46     0.14    0.08
+  1     200      326804.27    318377.06      350806.50      351688.29    401668.92    52.15    21.73      25.76      18.14    53.88    39.95    15.44    0.35
+  3     400      216401.40    132041.42      310183.11      331759.75    224691.93    95.23    94.41      52.30      38.56    74.72    67.57    33.44    0.69
+  5     600      190065.38     20331.33      179212.21      232055.91    180367.39    97.91    97.36      81.48      60.13    79.45    73.16    49.10    0.81
+  7     800      166650.88      8086.55       86347.14      157012.66    148529.39    98.29    97.76      88.65      67.00    82.01    76.62    54.03    0.84
+  9    1000      152288.90      4734.57       55830.09      127388.28    128700.33    98.48    98.22      90.82      71.54    83.13    78.33    56.26    0.86
+ 11    1200      135417.76      3216.06       41587.54      106772.73    112226.75    98.48    98.32      91.84      74.31    84.38    79.90    63.30    0.87
+ 13    1400      121966.79      2367.94       34417.39       92231.86     98310.89    98.47    98.29      92.56      76.50    84.75    80.42    62.70    0.88
+ 15    1600      114281.65      1754.67       28731.17       79793.31     90551.77    98.54    98.37      93.27      78.38    84.59    80.57    61.45    0.89
+ 17    1800      102003.81      1417.36       24730.67       68672.19     80261.55    98.57    98.45      93.43      80.04    84.96    81.03    62.40    0.89
+ 19    2000       98094.32      1057.57       21491.50       60199.15     76384.58    98.56    98.43      93.67      81.15    85.25    81.22    67.93    0.90
+ 21    2200       92146.51       882.52       18630.81       52515.88     70969.55    98.55    98.46      93.74      81.98    85.45    81.65    65.75    0.90
+ 23    2400       80908.15       741.59       16133.14       45046.61     63405.66    98.54    98.42      93.74      82.88    85.46    81.71    67.42    0.90
+ 25    2600       74054.65       592.39       14017.20       39001.22     58532.16    98.46    98.52      94.00      83.95    85.84    81.96    67.29    0.91
+ 26    2800       69375.25       560.85       12356.84       33985.56     54110.29    98.51    98.55      94.13      84.31    85.83    82.07    67.60    0.91
+ 28    3000       64394.42       417.82       10475.27       29263.60     50129.41    98.56    98.60      94.16      85.17    85.87    82.00    68.06    0.91
+ 30    3200       65120.30       349.76        9338.91       25450.23     49317.57    98.48    98.48      94.16      85.75    85.86    82.24    68.75    0.91
+ 32    3400       58198.98       310.05        8146.48       21409.90     45381.83    98.52    98.51      94.31      85.89    85.90    82.25    68.06    0.91
+ 34    3600       53443.92       307.55        6899.66       17694.29     42448.23    98.51    98.54      94.21      86.30    85.97    82.30    70.30    0.91
+ 36    3800       49590.05       283.43        6162.74       15150.76     39862.73    98.41    98.51      94.12      86.60    85.46    81.69    67.10    0.91
+ 38    4000       49461.16       243.02        5272.19       12441.89     39643.02    98.43    98.56      94.18      86.68    85.96    82.14    69.57    0.91
+ 40    4200       44188.99       229.82        4615.35       10546.57     36987.01    98.54    98.63      94.31      86.77    86.29    82.56    72.18    0.92
+ 42    4400       45282.07       203.60        3839.16        8850.07     35848.63    98.48    98.59      94.29      86.93    85.91    82.29    70.36    0.92
+ 44    4600       38460.94       197.43        3424.16        7183.50     33356.72    98.50    98.55      94.34      87.09    86.23    82.42    70.31    0.92
+ 46    4800       36764.00       174.50        2918.44        5948.73     32730.01    98.48    98.57      94.31      87.27    86.29    82.60    70.52    0.92
+ 48    5000       35001.17       152.16        2558.14        4904.22     31184.12    98.50    98.54      94.30      87.21    86.11    82.36    71.57    0.92
+ 50    5200       31605.41       135.74        2102.91        3971.14     29827.26    98.50    98.61      94.31      87.23    86.35    82.71    69.70    0.92
+ 52    5400       31986.24       138.36        1790.15        3344.71     30063.83    98.45    98.52      94.24      87.34    86.62    82.85    72.16    0.92
+ 54    5600       29882.97       102.52        1535.54        2772.05     29020.06    98.51    98.52      94.24      87.32    86.61    82.79    71.25    0.92
+ 55    5800       28678.30        86.52        1415.47        2316.51     28398.86    98.50    98.54      94.20      87.42    86.57    82.87    70.69    0.92
+ 57    6000       27242.72        93.65        1211.41        1857.52     27984.02    98.53    98.49      94.32      87.40    86.42    82.68    69.75    0.92
+ 59    6200       27546.13       109.60        1067.14        1620.00     28146.45    98.50    98.52      94.21      87.42    86.35    82.71    69.86    0.92
+ 61    6400       25631.50        93.69         870.96        1375.05     27293.61    98.46    98.45      94.32      87.45    86.53    82.78    70.22    0.92
+ 63    6600       24504.69        89.07         757.66        1185.20     26737.22    98.50    98.52      94.21      87.43    86.57    83.00    68.82    0.92
+ 65    6800       24627.34        92.06         690.78        1039.15     27231.68    98.49    98.52      94.11      87.57    86.46    82.82    70.93    0.92
+ 67    7000       22891.03        70.86         609.82         854.07     25944.20    98.52    98.47      94.23      87.50    86.52    82.90    71.81    0.92
+ 69    7200       22225.15        63.62         535.11         769.77     26233.69    98.43    98.51      94.33      87.48    86.71    83.03    70.70    0.92
+ 71    7400       22140.94        59.55         465.15         689.75     26522.26    98.46    98.44      94.23      87.48    86.35    82.68    69.79    0.92
+ 73    7600       21337.90        60.12         435.61         597.08     25722.51    98.49    98.51      94.18      87.61    86.57    82.88    71.17    0.92
+ 75    7800       20174.11        52.05         397.01         535.87     25409.19    98.48    98.54      94.22      87.64    86.75    83.14    71.52    0.92
+ 77    8000       19950.03        47.61         379.74         473.47     25503.13    98.48    98.52      94.40      87.52    86.86    83.12    72.28    0.92
+ 79    8200       19551.31        55.30         344.26         419.07     25145.79    98.48    98.57      94.29      87.52    86.75    83.12    72.26    0.92
+ 81    8400       19347.55        44.23         328.94         395.68     25265.66    98.48    98.48      94.19      87.62    86.78    83.14    72.59    0.92
+ 83    8600       17930.78        37.65         273.06         364.91     24453.41    98.47    98.48      94.31      87.60    86.79    83.07    71.44    0.92
+ 85    8800       18512.80        40.02         256.27         294.13     24968.38    98.49    98.49      94.37      87.59    86.71    83.07    71.98    0.92
+ 86    9000       18418.84        35.56         288.22         286.18     25320.00    98.48    98.47      94.27      87.65    86.70    83.00    70.67    0.92
+ 88    9200       17064.24        34.03         219.66         277.78     24221.88    98.52    98.50      94.22      87.50    86.92    83.26    71.61    0.92
+ 90    9400       16913.77        34.09         195.50         254.73     24503.23    98.46    98.51      94.20      87.64    86.62    83.01    70.23    0.92
+ 92    9600       16406.18        31.73         212.47         245.52     24121.10    98.51    98.54      94.27      87.64    86.86    83.23    70.59    0.92
+ 94    9800       16115.47        38.38         174.58         236.24     23783.12    98.51    98.49      94.41      87.63    86.86    83.24    71.35    0.92
+ 96   10000       16006.48        28.45         156.09         197.17     24298.81    98.61    98.60      94.37      87.64    86.60    83.01    70.27    0.92
+ 98   10200       15286.30        29.18         171.97         200.37     23847.23    98.52    98.56      94.24      87.65    86.91    83.43    71.69    0.92
+100   10400       14564.52        34.39         171.55         181.82     23423.01    98.51    98.51      94.26      87.73    86.75    83.15    71.19    0.92
+102   10600       14722.93        34.52         139.40         151.99     24029.18    98.54    98.51      94.24      87.72    86.68    83.05    70.63    0.92
+104   10800       14692.61        43.77         146.19         159.78     23779.20    98.54    98.59      94.43      87.59    86.91    83.39    71.00    0.92
+106   11000       14039.17        16.10         116.17         137.89     23608.55    98.59    98.58      94.45      87.62    86.98    83.41    72.07    0.92
+108   11200       14196.26        19.91         107.10         134.46     23868.14    98.54    98.54      94.37      87.72    86.89    83.33    70.14    0.92
+110   11400       13295.42        35.95          89.86         114.25     22804.20    98.54    98.57      94.46      87.74    87.06    83.49    70.77    0.92
+112   11600       13401.19        16.78          93.28         129.89     23154.22    98.48    98.54      94.38      87.69    86.89    83.35    70.49    0.92
+114   11800       13046.40        18.20          94.57         120.36     23371.68    98.51    98.52      94.38      87.60    86.90    83.38    70.28    0.92
+116   12000       12922.65        20.42         106.29         106.81     23030.69    98.51    98.55      94.37      87.71    86.99    83.44    70.68    0.92
+118   12200       12892.01        16.59          75.09          88.76     23101.87    98.58    98.59      94.48      87.64    87.19    83.64    70.94    0.92
+119   12400       12557.62        18.13          84.62          77.63     22842.96    98.59    98.59      94.42      87.64    87.01    83.49    71.47    0.92
+121   12600       12394.34        15.91          70.53          95.61     22913.36    98.53    98.59      94.37      87.67    87.19    83.55    72.12    0.92
+123   12800       11939.34        10.84          70.64          92.80     23016.11    98.54    98.55      94.43      87.60    87.22    83.64    70.11    0.92
+125   13000       11770.99        16.75          70.96          73.53     22943.63    98.58    98.62      94.29      87.65    87.03    83.45    71.85    0.92
+127   13200       11429.14        14.62          63.66          82.00     22674.33    98.56    98.57      94.40      87.59    87.01    83.44    71.50    0.92
+129   13400       11228.07        18.38          61.41          76.30     22445.09    98.57    98.56      94.33      87.64    87.05    83.53    70.51    0.92
+131   13600       11528.88        12.20          60.64          77.77     22968.91    98.51    98.55      94.27      87.71    87.13    83.64    71.42    0.92
+133   13800       11131.85         6.76          60.98          86.46     22654.94    98.52    98.57      94.37      87.70    87.12    83.63    71.21    0.92
+[38;5;2m✔ Saved pipeline to output directory[0m
+output/model-last
+Post-training finished
+Evaluating spaCy model
+[38;5;4mℹ Using GPU: 0[0m
+[1m
+================================== Results ==================================[0m
+
+TOK      100.00
+TAG      98.46 
+POS      98.42 
+MORPH    94.45 
+LEMMA    88.01 
+UAS      86.48 
+LAS      83.01 
+SENT P   71.29 
+SENT R   71.63 
+SENT F   71.46 
+SPEED    3043  
+
+[1m
+============================== MORPH (per feat) ==============================[0m
+
+                P        R        F
+Case        98.93    98.79    98.86
+Gender      94.46    94.51    94.48
+Number      99.61    99.45    99.53
+Aspect      98.88    98.67    98.77
+Mood        99.36    99.13    99.24
+Person      99.23    98.48    98.86
+Tense       98.90    98.83    98.87
+VerbForm    99.82    99.74    99.78
+Voice       98.10    98.03    98.06
+PronType    98.86    98.53    98.69
+Degree      95.87    97.25    96.56
+Definite    99.61    99.55    99.58
+Reflex     100.00   100.00   100.00
+Polarity    99.54    98.64    99.09
+Poss       100.00    92.31    96.00
+
+[1m
+=============================== LAS (per type) ===============================[0m
+
+                   P       R       F
+obl:arg        79.90   81.31   80.60
+root           87.07   87.49   87.28
+nsubj          82.89   82.70   82.80
+advmod         74.52   71.54   73.00
+advcl          74.59   76.19   75.38
+ccomp          75.38   65.33   70.00
+discourse      86.28   86.62   86.45
+obj            88.08   87.89   87.99
+det            94.85   94.73   94.79
+nmod           76.59   76.74   76.66
+cop            76.00   81.82   78.80
+obl            77.31   76.45   76.88
+appos          63.27   43.06   51.24
+case           96.94   97.38   97.16
+acl            56.28   51.50   53.79
+mark           88.48   91.88   90.15
+nsubj:pass     77.67   84.21   80.81
+xcomp          72.02   72.92   72.46
+cc             88.57   89.98   89.27
+conj           67.91   68.70   68.30
+dislocated     17.65   11.11   13.64
+amod           81.82   80.36   81.08
+parataxis       0.00    0.00    0.00
+dep             0.00    0.00    0.00
+advcl:cmp      52.94   42.86   47.37
+nummod         85.14   90.00   87.50
+orphan         39.62   33.33   36.21
+fixed          70.00   63.64   66.67
+csubj:pass      0.00    0.00    0.00
+obl:agent      73.33   50.00   59.46
+vocative       74.19   65.71   69.70
+csubj          62.50   50.00   55.56
+nsubj:outer     0.00    0.00    0.00
+aux             0.00    0.00    0.00
+aux:pass        0.00    0.00    0.00
+flat:name     100.00   71.43   83.33
+
+[38;5;2m✔ Saved results to output/eval_results.json[0m
+spaCy Evaluation finished
