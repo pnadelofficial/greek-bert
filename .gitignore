@@ -216,3 +216,7 @@ spacy/corpus/
 wsd/*wsd_model/
 wsd/glaux
 wsd/ancient-greek-wsd-data
+kevinkrahn_shlm-grc-en/
+hf_format120/
+scripts/output/
+scripts/logs/

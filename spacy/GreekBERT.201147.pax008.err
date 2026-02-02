@@ -1,0 +1,54 @@
+	Current module do not work with T4 GPUs
+Some weights of BertModel were not initialized from the model checkpoint at /cluster/tufts/tuftsai/pnadel01/greek-bert/hf_format120 and are newly initialized: ['bert.pooler.dense.bias', 'bert.pooler.dense.weight']
+You should probably TRAIN this model on a down-stream task to be able to use it for predictions and inference.
+Traceback (most recent call last):
+  File "/cluster/tufts/tuftsai/tools/ananconda/2023.07/envs/spacy_gpu/bin/spacy", line 7, in <module>
+    sys.exit(setup_cli())
+             ^^^^^^^^^^^
+  File "/cluster/tufts/tuftsai/tools/ananconda/2023.07/envs/spacy_gpu/lib/python3.12/site-packages/spacy/cli/_util.py", line 87, in setup_cli
+    command(prog_name=COMMAND)
+  File "/cluster/tufts/tuftsai/tools/ananconda/2023.07/envs/spacy_gpu/lib/python3.12/site-packages/click/core.py", line 1485, in __call__
+    return self.main(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/cluster/tufts/tuftsai/tools/ananconda/2023.07/envs/spacy_gpu/lib/python3.12/site-packages/typer/core.py", line 803, in main
+    return _main(
+           ^^^^^^
+  File "/cluster/tufts/tuftsai/tools/ananconda/2023.07/envs/spacy_gpu/lib/python3.12/site-packages/typer/core.py", line 192, in _main
+    rv = self.invoke(ctx)
+         ^^^^^^^^^^^^^^^^
+  File "/cluster/tufts/tuftsai/tools/ananconda/2023.07/envs/spacy_gpu/lib/python3.12/site-packages/click/core.py", line 1873, in invoke
+    return _process_result(sub_ctx.command.invoke(sub_ctx))
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/cluster/tufts/tuftsai/tools/ananconda/2023.07/envs/spacy_gpu/lib/python3.12/site-packages/click/core.py", line 1269, in invoke
+    return ctx.invoke(self.callback, **ctx.params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/cluster/tufts/tuftsai/tools/ananconda/2023.07/envs/spacy_gpu/lib/python3.12/site-packages/click/core.py", line 824, in invoke
+    return callback(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/cluster/tufts/tuftsai/tools/ananconda/2023.07/envs/spacy_gpu/lib/python3.12/site-packages/typer/main.py", line 691, in wrapper
+    return callback(**use_params)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/cluster/tufts/tuftsai/tools/ananconda/2023.07/envs/spacy_gpu/lib/python3.12/site-packages/spacy/cli/evaluate.py", line 47, in evaluate_cli
+    evaluate(
+  File "/cluster/tufts/tuftsai/tools/ananconda/2023.07/envs/spacy_gpu/lib/python3.12/site-packages/spacy/cli/evaluate.py", line 84, in evaluate
+    nlp = util.load_model(model)
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "/cluster/tufts/tuftsai/tools/ananconda/2023.07/envs/spacy_gpu/lib/python3.12/site-packages/spacy/util.py", line 526, in load_model
+    return load_model_from_path(Path(name), **kwargs)  # type: ignore[arg-type]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/cluster/tufts/tuftsai/tools/ananconda/2023.07/envs/spacy_gpu/lib/python3.12/site-packages/spacy/util.py", line 598, in load_model_from_path
+    nlp = load_model_from_config(
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/cluster/tufts/tuftsai/tools/ananconda/2023.07/envs/spacy_gpu/lib/python3.12/site-packages/spacy/util.py", line 646, in load_model_from_config
+    nlp = lang_cls.from_config(
+          ^^^^^^^^^^^^^^^^^^^^^
+  File "/cluster/tufts/tuftsai/tools/ananconda/2023.07/envs/spacy_gpu/lib/python3.12/site-packages/spacy/language.py", line 1891, in from_config
+    nlp.add_pipe(
+  File "/cluster/tufts/tuftsai/tools/ananconda/2023.07/envs/spacy_gpu/lib/python3.12/site-packages/spacy/language.py", line 825, in add_pipe
+    pipe_component = self.create_pipe(
+                     ^^^^^^^^^^^^^^^^^
+  File "/cluster/tufts/tuftsai/tools/ananconda/2023.07/envs/spacy_gpu/lib/python3.12/site-packages/spacy/language.py", line 694, in create_pipe
+    raise ValueError(err)
+ValueError: [E002] Can't find factory for 'frequency_lemmatizer' for language AncientGreek (grc). This usually happens when spaCy calls `nlp.create_pipe` with a custom component name that's not registered on the current language class. If you're using a custom component, make sure you've added the decorator `@Language.component` (for function components) or `@Language.factory` (for class components).
+
+Available factories: merge_noun_chunks, merge_entities, merge_subtokens, ja.morphologizer, attribute_ruler, entity_linker, entity_ruler, lemmatizer, textcat, token_splitter, doc_cleaner, tok2vec, senter, morphologizer, spancat, spancat_singlelabel, future_entity_ruler, span_ruler, trainable_lemmatizer, textcat_multilabel, span_finder, ner, beam_ner, parser, beam_parser, tagger, nn_labeller, sentencizer, transformer
