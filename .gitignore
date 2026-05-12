@@ -220,3 +220,13 @@ kevinkrahn_shlm-grc-en/
 hf_format120/
 scripts/output/
 scripts/logs/
+spacy_output/
+lemma-pos/greek-lemma-pos-artisto-model
+lemma-pos/greek-lemma-pos-model
+lemma-pos/treebanks
+lemma-pos/*json
+lemma-pos/*tsv
+Jacobo_aristoBERTo
+spacy_code/assets
+spacy_code/corpus
+spacy_code/output

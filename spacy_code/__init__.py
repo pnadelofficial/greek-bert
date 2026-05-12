@@ -1,0 +1,2 @@
+import spacy_transformers
+from .custom_components.lemmatizer import FrequencyLemmatizer

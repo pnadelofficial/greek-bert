@@ -2,9 +2,8 @@
 
 #SBATCH -J GreekSBERTTraining
 #SBATCH --time=02-00:00:00
-#SBATCH -p gpu
-#SBATCH --gres=gpu:h200:1
-#SBATCH --qos=expanded
+#SBATCH -p tuftsai
+#SBATCH --gres=gpu:h100:1
 #SBATCH -N 1
 #SBATCH -n 16
 #SBATCH --mem=32g 

@@ -4,7 +4,7 @@ from typing import Iterable
 import unicodedata
 import json
 
-import spacy
+import spacy_code
 from spacy.language import Language
 from spacy.training.corpus import Corpus
 from spacy.training.example import Example
@@ -63,7 +63,7 @@ def normalize_examples(examples: Iterable[Example]) -> Iterable[Example]:
 
 def only_lookup() -> Language:
     """Model with only a lookup table."""
-    nlp = spacy.load("output/model-best")
+    nlp = spacy_code.load("output/model-best")
     nlp.remove_pipe("frequency_lemmatizer")
     nlp.remove_pipe("trainable_lemmatizer")
     lemmatizer = nlp.add_pipe("lemmatizer", config={"mode": "lookup"})
@@ -76,21 +76,21 @@ def only_lookup() -> Language:
 
 def only_trainable() -> Language:
     """Model with only a trainable lemmatizer."""
-    nlp = spacy.load("output/model-best")
+    nlp = spacy_code.load("output/model-best")
     nlp.remove_pipe("frequency_lemmatizer")
     return nlp
 
 
 def only_freq() -> Language:
     """Model with only a frequency lemmatizer."""
-    nlp = spacy.load("output/model-best")
+    nlp = spacy_code.load("output/model-best")
     nlp.remove_pipe("trainable_lemmatizer")
     return nlp
 
 
 def base() -> Language:
     """Base model with all components enabled."""
-    nlp = spacy.load("output/model-best")
+    nlp = spacy_code.load("output/model-best")
     return nlp
 
 
