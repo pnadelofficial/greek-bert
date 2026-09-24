@@ -1,0 +1,47 @@
+# =============================================================================
+# GreekBERT pretraining -- RoBERTa-style MLM
+# Based on: https://arxiv.org/abs/1907.11692
+#
+# Relative paths here resolve against THIS FILE's directory, so this config
+# works from any cwd. Per-run paths are injected by slurm/env.sh via
+# CHECKPOINT_DIR / TENSORBOARD_DIR / HF_EXPORT_DIR and win over the values below.
+# =============================================================================
+
+# --- Learning rate schedule --------------------------------------------------
+# RoBERTa used 6e-4 for the base model with 5% linear warmup.
+lr: 6e-4            # base LR (scaled by the OneCycle warmup)
+max_lr: 6e-4        # peak LR after warmup
+pct_start: 0.05     # 5% of total steps spent warming up
+
+# --- MLM masking -------------------------------------------------------------
+# RoBERTa: 15% (dynamic). ModernBERT: 30%. We use 30% with dynamic masking
+# for more learning signal per step.
+mask_prob: 0.30
+
+# --- Batch size and training length -----------------------------------------
+# RoBERTa used an 8k-sequence batch; we are GPU-limited.
+# Effective batch = batch_size * world_size * gradient_accumulation_steps
+batch_size: 16                    # per-GPU
+num_epochs: 20
+gradient_accumulation_steps: 1
+
+# --- Optimizer ---------------------------------------------------------------
+# AdamW; beta2=0.98 (not the 0.999 default) for stability at large batch.
+# Set in scripts/train.py.
+weight_decay: 0.01
+
+# --- Training behaviour ------------------------------------------------------
+use_mixed_precision: true
+
+# --- Model and data ----------------------------------------------------------
+pretrained_model: "nlpaueb/bert-base-greek-uncased-v1"
+tokenized_dataset_path: "../data/nlpaueb_tokenized_open_greek_dataset"
+
+# --- Logging, checkpoints, export -------------------------------------------
+# Defaults for running by hand (paths are relative to THIS file).
+# Under SLURM these are overridden per RUN_NAME to
+# runs/<RUN_NAME>/{checkpoints,tensorboard,hf_format} by slurm/env.sh.
+log_interval: 100
+checkpoint_dir: "../scripts/checkpoints"
+tensorboard_dir: "../scripts/runs"
+output_dir: "../models/ManualExport"

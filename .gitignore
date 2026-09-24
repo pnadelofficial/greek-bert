@@ -206,27 +206,77 @@ marimo/_static/
 marimo/_lsp/
 __marimo__/
 
-# output files
+# ============================================================================
+# Outputs, artifacts, and downloaded data -- none of this belongs in git.
+# ============================================================================
+
+# Training data and downloaded corpora
 data/
-hf_format/
-scripts/checkpoints/
-spacy/output/
-spacy/assets/
-spacy/corpus/
-wsd/*wsd_model/
-wsd/glaux
-wsd/ancient-greek-wsd-data
-kevinkrahn_shlm-grc-en/
-hf_format120/
+
+# Model weights and HuggingFace exports (incl. the models/current symlink)
+models/
+hf_format*/
+
+# Per-run artifacts written by slurm/env.sh: runs/<RUN_NAME>/{checkpoints,tensorboard,hf_format,spacy,sbert}
+runs/
+
+# SLURM logs -- these used to pile up in scripts/ and spacy_code/
+logs/
+*.out
+*.err
+!*.out.txt
+
+# TensorBoard event files
+*.tfevents.*
+events.out.tfevents.*
+
+# Checkpoints
+*.pt
+*.safetensors
+*.bin
+
+# Legacy output dirs inside scripts/ (pre-slurm runs wrote here)
 scripts/output/
+scripts/checkpoints/
 scripts/logs/
+scripts/runs/
+
+# spaCy project artifacts (dir is spacy_code/, not spacy/)
+spacy_code/output/
+spacy_code/assets/
+spacy_code/corpus/
 spacy_output/
-lemma-pos/greek-lemma-pos-artisto-model
-lemma-pos/greek-lemma-pos-model
-lemma-pos/treebanks
-lemma-pos/*json
-lemma-pos/*tsv
-Jacobo_aristoBERTo
-spacy_code/assets
-spacy_code/corpus
-spacy_code/output
+
+# SBERT outputs
+sbert/output/
+sbert-output/
+
+# WSD models and glaux data
+wsd/*wsd_model/
+wsd/glaux/
+wsd/ancient-greek-wsd-data/
+
+# lemma-pos generated data + trained models
+lemma-pos/greek-lemma-pos-artisto-model/
+lemma-pos/greek-lemma-pos-model/
+lemma-pos/treebanks/
+lemma-pos/*.json
+lemma-pos/*.tsv
+
+# Virtualenvs (two uv projects: root py3.13, spacy_code py3.12)
+.venv/
+
+# Generated / cached notebook artifacts
+notebooks/unsloth_compiled_cache/
+notebooks/checkpoints/
+
+# Local shell/editor files dropped into the repo root
+.bash_profile
+.bashrc
+.profile
+.zprofile
+.zshrc
+.gitconfig
+.mcp.json
+.ripgreprc
+.vscode/

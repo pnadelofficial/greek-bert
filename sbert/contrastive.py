@@ -2,9 +2,16 @@ import torch
 from torch.utils.data import DataLoader
 from sentence_transformers import SentenceTransformer, InputExample, losses, util, evaluation
 
-TRAIN_FILES = ["../data/ancient-greek-datasets/translation_pairs_a.txt", "../data/ancient-greek-datasets/translation_pairs_b.txt"]
-EVAL_FILE = "../data/ancient-greek-datasets/translation_pairs_eval.txt"
-OUTPUT_PATH = './output/ancient-greek-contrastive'
+import os
+from pathlib import Path
+
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+_DATA = _REPO_ROOT / "data" / "ancient-greek-datasets"
+
+TRAIN_FILES = [str(_DATA / "translation_pairs_a.txt"), str(_DATA / "translation_pairs_b.txt")]
+EVAL_FILE = str(_DATA / "translation_pairs_eval.txt")
+# Set by slurm/sbert.sh to runs/<RUN_NAME>/sbert; falls back to sbert/output.
+OUTPUT_PATH = os.environ.get("SBERT_OUTPUT") or str(Path(__file__).resolve().parent / "output" / "ancient-greek-contrastive")
 
 # Hyperparameters (Krahn et al. Table 9)
 BATCH_SIZE = 82
@@ -33,7 +40,11 @@ def load_eval_data():
     return greek_sentences, english_sentences
 
 def train():
-    base_model = SentenceTransformer('../hf_format120')
+    # Set by slurm/sbert.sh (defaults to models/greekbert-jan20, the export this
+    # model was originally trained from).
+    base_model_path = os.environ.get("BASE_MODEL") or str(_REPO_ROOT / "models" / "greekbert-jan20")
+    print(f"Base model: {base_model_path}")
+    base_model = SentenceTransformer(base_model_path)
     train_examples = load_data()
     train_dataloader = DataLoader(
         train_examples, 
