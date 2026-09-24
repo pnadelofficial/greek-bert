@@ -18,6 +18,7 @@
 # =============================================================================
 #SBATCH -J GreekBERT-Post
 #SBATCH -p gpu
+#SBATCH -n 8
 #SBATCH --gres=gpu:b200:8
 #SBATCH --mem=32g
 #SBATCH --reservation=new_gpu
