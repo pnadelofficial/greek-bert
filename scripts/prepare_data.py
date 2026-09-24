@@ -61,7 +61,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from utils import TrainingConfig, tokenize_and_prepare_mlm  # noqa: E402
+from utils import TrainingConfig, tokenize_and_prepare_mlm, resolve_model_path  # noqa: E402
 
 
 def parse_args() -> argparse.Namespace:
@@ -213,7 +213,9 @@ def main() -> int:
         holdout_by_source[d.split("#", 1)[0]] = holdout_by_source.get(d.split("#", 1)[0], 0) + 1
     print(f"  holdout documents by source: {json.dumps(holdout_by_source, indent=4)}")
 
-    tokenizer = AutoTokenizer.from_pretrained(args.tokenizer)
+    # Hub id ('nlpaueb/...') or local dir ('tokenizers/modernbert-greek-tokenizer')
+    # — resolve_model_path keeps both working from any cwd.
+    tokenizer = AutoTokenizer.from_pretrained(resolve_model_path(args.tokenizer))
 
     def tokenize_shard(shard_ids: list[str]) -> Dataset:
         """One shard: raw texts in, tokenized sequences out.

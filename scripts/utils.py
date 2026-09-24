@@ -7,7 +7,7 @@ import dataclasses
 from dataclasses import dataclass, asdict
 from pathlib import Path
 import yaml
-from typing import Union
+from typing import Union, Optional, List
 
 # Config keys that hold filesystem paths. Relative values are resolved against
 # the directory containing the YAML file, so a run behaves identically no matter
@@ -30,6 +30,57 @@ ENV_OVERRIDES = {
     "tokenized_dataset_path": "TOKENIZED_DATASET_PATH",
     "pretrained_model": "PRETRAINED_MODEL",
 }
+
+
+def resolve_model_path(path: str) -> str:
+    """Resolve a model/config/tokenizer reference for Auto* loading.
+
+    Rules (matches how `from_yaml` treats PATH_FIELDS, with one exception):
+      * absolute path            -> as-is
+      * existing local path      -> as-is (e.g. configs/bert-fresh-35k, or a
+        tokenizer dir relative to the CWD)
+      * neither (a HuggingFace id like 'answerdotai/ModernBERT-base' or
+        'nlpaueb/bert-base-greek-uncased-v1') -> as-is; Auto* treats it as a
+        hub id. NEVER prepend the repo root: that turned hub ids into
+        non-existent local paths and AutoConfig raised HFValidationError.
+    """
+    from pathlib import Path as _P
+    p = _P(path)
+    if p.is_absolute() or p.exists():
+        return str(p)
+    return path
+
+
+@dataclass
+class TokenizerSpec:
+    """A tokenizer the pretraining pipeline can actually run.
+
+    The two arms of the 2x2 comparison (docs/EXPERIMENTS-2X2.md) differ in
+    exactly this:
+
+      aristo arm (configs/train.yaml):  BERT backbone + nlpaueb WordPiece
+        (specials at the classic ids [PAD]=0 / [CLS]=101 / [SEP]=102 / [MASK]=103).
+      BPE arm   (configs/train-modernbert.yaml): ModernBERT trunk + 50k cased
+        Greek BPE (scripts/train_bpe.py). Its reloaded tokenizer puts CONTENT
+        tokens at ids 0+ and the specials at the END of the vocab (ids depend
+        on the final vocab size), so the ids differ from arm 1.
+
+    Every token id is resolved from the loaded tokenizer at runtime; nothing in
+    the pipeline hardcodes an id for a specific vocabulary. That is what makes
+    the same mlm_masking / masking guard correct for both layouts.
+    """
+    tokenizer_path: str                       # HuggingFace id or local dir
+    model_config_path: Optional[str] = None   # None = use the tokenizer's own
+    # Extra ids to exclude from MLM masking beyond PAD/CLS/SEP/MASK/bos/eos.
+    # Reserved for a future arm that has genuinely-unused reserved ids; the
+    # current arms pass nothing (see make_masking_fn — do NOT hardcode a fixed
+    # id, or you will drop real content tokens in a layout where content
+    # occupies id 0+).
+    extra_excluded_ids: tuple = ()
+
+    @property
+    def path(self) -> str:
+        return resolve_model_path(self.tokenizer_path)
 
 
 @dataclass
@@ -58,6 +109,13 @@ class TrainingConfig:
     # are attributable.
     seed: int = 22091997
     pretrained_model: Union[str, None] = None
+    # Fresh-init arms (2x2 comparison, docs/EXPERIMENTS-2X2.md): when
+    # pretrained_model is null, `model_config` is the architecture to randomly
+    # initialize (a BERT or ModernBERT config dir) and `tokenizer` is the
+    # tokenizer whose vocab/head the model is sized to. Both arms must use the
+    # SAME (model_config, tokenizer) pair in train and convert_to_hf.
+    model_config: Union[str, None] = None
+    tokenizer: Union[str, None] = None
     tokenized_dataset_path: str = "../data/tokenized_open_greek_dataset"
     # Where convert_to_hf.py writes the HuggingFace-format export.
     output_dir: str = "./hf_format"
@@ -273,3 +331,35 @@ def mlm_masking(
     # r >= 0.90 -> left unchanged (the exposure-bias correction term)
 
     return masked_input, labels
+
+def make_masking_fn(tokenizer, spec: "TokenizerSpec", mask_prob: float):
+    """Build the per-step masking callable for a given tokenizer/spec.
+
+    Centralizes the id resolution so both arms of the 2x2 (BERT+WordPiece and
+    ModernBERT+BPE) call the SAME mlm_masking with the right ids, and so the
+    special-token guard is configured identically. `spec.extra_excluded_ids`
+    lets the BPE arm also exclude ids it does not use (0, 1 = the modernbert
+    padding/eos placeholders that are not in the Greek tokenizer's special
+    set but could appear in the data if the base tokenizer was used).
+
+    Returns a function `fn(input_ids) -> (masked_input_ids, labels)`.
+    """
+    excluded = list(spec.extra_excluded_ids or ())
+    for attr in ("bos_token_id", "eos_token_id"):
+        v = getattr(tokenizer, attr, None)
+        if isinstance(v, int) and v >= 0 and v not in excluded:
+            excluded.append(v)
+
+    def _mask(input_ids):
+        return mlm_masking(
+            input_ids,
+            mask_token_id=tokenizer.mask_token_id,
+            mask_prob=mask_prob,
+            pad_token_id=tokenizer.pad_token_id,
+            ignore_index=-100,
+            vocab_size=len(tokenizer),
+            cls_token_id=tokenizer.cls_token_id,
+            sep_token_id=tokenizer.sep_token_id,
+            special_token_ids=tuple(excluded),
+        )
+    return _mask

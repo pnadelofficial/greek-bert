@@ -59,7 +59,7 @@
   },
   "clean_up_tokenization_spaces": true,
   "cls_token": "[CLS]",
-  "eos_token": "[PAD]",
+  "eos_token": "<|padding>",
   "extra_special_tokens": {},
   "mask_token": "[MASK]",
   "model_input_names": [

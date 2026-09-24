@@ -19,7 +19,8 @@ from pathlib import Path
 # scripts/ is not a package; make its siblings importable regardless of cwd.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from utils import TrainingConfig, setup_distributed, cleanup_distributed, mlm_masking
+from utils import (TrainingConfig, TokenizerSpec, resolve_model_path,
+                   setup_distributed, cleanup_distributed, make_masking_fn)
 from paths import repo_path
 from runs import record_result, record_run_provenance, write_metrics
 
@@ -126,41 +127,69 @@ def main():
             print(f"  {key}: type={type(value)}, dtype={getattr(value, 'dtype', 'N/A')}")
 
     # model init
+    # The 2x2 comparison (docs/EXPERIMENTS-2X2.md) is expressed entirely as
+    # (architecture config x tokenizer) pairs. pretrained_model == null means
+    # "random init from model_config" — the fresh-init arms (2 and 4).
     if is_main_process:
         print("Initializing model...")
-    
-    if not hp_config.pretrained_model:
-        # From-scratch arm: the 50k cased Greek BPE with a ModernBERT backbone.
-        # The config's vocab_size MUST be set before the model is built, or the
-        # LM head comes out at ModernBERT's 50257 and can never match the 50368
-        # token Greek tokenizer (audit item 9).
-        tokenizer = AutoTokenizer.from_pretrained(str(repo_path("tokenizers", "modernbert-greek-tokenizer")))
-        config = AutoConfig.from_pretrained("answerdotai/ModernBERT-base")
-        config.vocab_size = len(tokenizer)
-        config.bos_token_id = tokenizer.bos_token_id
-        config.eos_token_id = tokenizer.eos_token_id
-        config.pad_token_id = tokenizer.pad_token_id
-        config.cls_token_id = tokenizer.cls_token_id
-        config.sep_token_id = tokenizer.sep_token_id
-        model = AutoModelForMaskedLM.from_config(config).to(device)
-    else:
-        config = AutoConfig.from_pretrained(hp_config.pretrained_model)
-        model = AutoModelForMaskedLM.from_pretrained(hp_config.pretrained_model).to(device)
-        tokenizer = AutoTokenizer.from_pretrained(hp_config.pretrained_model)
 
+    if hp_config.pretrained_model:
+        # Arm 1 (aristo-continuation): load both the weights AND the config+
+        # tokenizer from the pretrained checkpoint. Its own tokenizer is the
+        # source of truth for the special-token ids.
+        spec = TokenizerSpec(
+            tokenizer_path=hp_config.pretrained_model,
+            model_config_path=hp_config.pretrained_model,
+        )
+    else:
+        # Fresh-init arms. model_config defaults to the tokenizer's own
+        # config when the tokenizer dir ships one; otherwise it must be set.
+        spec = TokenizerSpec(
+            tokenizer_path=hp_config.tokenizer or "tokenizers/modernbert-greek-tokenizer",
+            model_config_path=hp_config.model_config,
+        )
+
+    tokenizer = AutoTokenizer.from_pretrained(spec.path)
+    if spec.model_config_path:
+        # Hub id ('answerdotai/ModernBERT-base') or local dir
+        # ('configs/bert-fresh-35k') — resolve_model_path keeps both working.
+        config = AutoConfig.from_pretrained(resolve_model_path(spec.model_config_path))
+    else:
+        raise SystemExit(
+            "pretrained_model is null but model_config is not set. Fresh-init "
+            "arms must point model_config at a BERT or ModernBERT config dir "
+            "(see configs/bert-fresh-35k/ for arm 2; answerdotai/ModernBERT-base "
+            "for arms 3/4)."
+        )
+
+    # vocab_size must be set BEFORE the model is built, or the LM head comes
+    # out at the config's original size and can never match the tokenizer
+    # (audit item 9 — the exact bug that made the from-scratch arm unexportable).
     vocab_size = len(tokenizer)
+    if getattr(config, "vocab_size", None) != vocab_size:
+        print(f"  config.vocab_size {config.vocab_size} -> {vocab_size} (matches tokenizer)")
+        config.vocab_size = vocab_size
+    for attr, tok_attr in ("pad_token_id", "pad_token_id"), ("cls_token_id", "cls_token_id"), ("sep_token_id", "sep_token_id"), ("bos_token_id", "bos_token_id"), ("eos_token_id", "eos_token_id"):
+        v = getattr(tokenizer, tok_attr, None)
+        if isinstance(v, int) and v >= 0:
+            setattr(config, attr, v)
+    # ModernBERT requires a bos_token_id (its forward prepends BOS); the Greek
+    # BPE does not define one, so fall back to the unused base-modernbert
+    # placeholder id 0. The id is excluded from MLM masking below.
+    if getattr(config, "bos_token_id", None) is None:
+        config.bos_token_id = 0
+
+    if hp_config.pretrained_model:
+        model = AutoModelForMaskedLM.from_pretrained(hp_config.pretrained_model, config=config).to(device)
+    else:
+        model = AutoModelForMaskedLM.from_config(config).to(device)
+
     if config.vocab_size != vocab_size:
         raise ValueError(
             f"config.vocab_size={config.vocab_size} != len(tokenizer)={vocab_size}. "
             "The LM head and the tokenizer disagree; every loss number from this "
             "run would be meaningless."
         )
-
-    # Only mutate eos_token for models that cannot generate. BERT has no real eos
-    # and aliasing it to [PAD] is harmless; baking eos_token="[PAD]" into a
-    # ModernBERT export silently misbehaves in generation-style consumers.
-    if getattr(config, "model_type", "") == "bert":
-        tokenizer.eos_token = tokenizer.pad_token
 
     # Dataset is pre-tokenized (see utils.tokenize_and_prepare_mlm, run ahead of
     # time); masks are generated dynamically per step in the training loop.
@@ -169,9 +198,14 @@ def main():
     if world_size > 1:
         model = DDP(model, device_ids=[local_rank], output_device=local_rank)
 
-    # masking parameters
-    mask_token_id = tokenizer.mask_token_id
-    pad_token_id = tokenizer.pad_token_id
+    # One masking callable for both arms. make_masking_fn resolves PAD/CLS/
+    # SEP/MASK (and, via the tokenizer's own attrs, any bos/eos) at runtime, so
+    # the special-token guard is layout-agnostic: it works for the nlpaueb
+    # WordPiece ids (0/101/102/103) AND the BPE arm, whose reloaded tokenizer
+    # puts CONTENT tokens at ids 0+ and specials at the end. We therefore do
+    # NOT hardcode any extra id: excluding a fixed id like 0 would wrongly drop
+    # real Greek content tokens in the BPE layout.
+    mask_fn = make_masking_fn(tokenizer, spec, hp_config.mask_prob)
     ignore_index = -100
 
     # creating distributed samplers
@@ -312,17 +346,10 @@ def main():
             input_ids = batch['input_ids']
             attention_mask = batch['attention_mask'].to(device)
 
-            # Dynamic masking - generate fresh masks every forward pass (RoBERTa approach)
-            masked_input_ids, masked_labels = mlm_masking(
-                input_ids, 
-                mask_token_id=mask_token_id,
-                mask_prob=hp_config.mask_prob,
-                pad_token_id=pad_token_id,
-                ignore_index=ignore_index,
-                vocab_size=vocab_size,
-                cls_token_id=tokenizer.cls_token_id,
-                sep_token_id=tokenizer.sep_token_id,
-            )
+            # Dynamic masking - fresh masks every forward pass (RoBERTa approach).
+            # mask_fn resolves every special-token id from the tokenizer, so the
+            # BERT/WordPiece arm and the ModernBERT/BPE arm share one code path.
+            masked_input_ids, masked_labels = mask_fn(input_ids)
             masked_input_ids = masked_input_ids.to(device, non_blocking=True)
             masked_labels = masked_labels.to(device, non_blocking=True)
 
@@ -413,16 +440,7 @@ def main():
 
                 # Same masking recipe as training, so val loss is comparable to
                 # train loss and to other runs.
-                masked_input_ids, masked_labels = mlm_masking(
-                    input_ids, 
-                    mask_token_id=mask_token_id,
-                    mask_prob=hp_config.mask_prob,
-                    pad_token_id=pad_token_id,
-                    ignore_index=ignore_index,
-                    vocab_size=vocab_size,
-                    cls_token_id=tokenizer.cls_token_id,
-                    sep_token_id=tokenizer.sep_token_id,
-                )
+                masked_input_ids, masked_labels = mask_fn(input_ids)
                 masked_input_ids = masked_input_ids.to(device, non_blocking=True)
                 masked_labels = masked_labels.to(device, non_blocking=True)
 

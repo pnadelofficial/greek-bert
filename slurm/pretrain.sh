@@ -10,6 +10,11 @@
 #   RUN_NAME=myrun sbatch slurm/pretrain.sh 4
 # =============================================================================
 #SBATCH -J GreekBERT
+#SBATCH -p gpu
+#SBATCH --gres=gpu:b200:8
+#SBATCH --mem=32g
+#SBATCH --reservation=new_gpu
+#SBATCH --time=02-00:00:00
 #SBATCH --output=logs/GreekBERT.%j.%N.out
 #SBATCH --error=logs/GreekBERT.%j.%N.err
 #SBATCH --mail-type=ALL

@@ -1,0 +1,73 @@
+# =============================================================================
+# GreekBERT pretraining — ARM 3 of the 2x2 comparison (docs/EXPERIMENTS-2X2.md)
+#
+#   ModernBERT trunk (random-init arm 4 / warm-start note below)
+#   + 50k cased Greek BPE (tokenizers/modernbert-greek-tokenizer)
+#
+# Same RoBERTa-style recipe as configs/train.yaml (arm 1) so the two arms
+# differ ONLY in architecture+tokenizer:
+#   mask_prob 0.30 (dynamic 80/10/10 + special-token guard)
+#   lr 2e-4 (continued/warm-start regime; see train.yaml for the rationale)
+#   AdamW betas (0.9, 0.98), bf16, best-checkpoint by all-reduced val loss
+#
+# Fresh-init (ARM 4): pretrained_model: null  -> everything random.
+# Warm-start (ARM 3): set pretrained_model to a ModernBERT Greek checkpoint
+#   that was exported with the 50k BPE (e.g. the arm-4 export). The trunk
+#   weights are loaded; the LM head is re-sized to 50368 by the vocab fix in
+#   train.py and re-learned. (This is the audit's "distill / re-init
+#   embeddings" idea, applied to the trunk.)
+#
+# Launch (submit from the project root):
+#   # arm 4 (fully from scratch):
+#   RUN_NAME=modernbert-bpe-scratch TOKENIZED_DATASET_PATH=data/greekbpe_tokenized_open_greek_dataset_v2 \
+#     CONFIG_PATH=configs/train-modernbert.yaml sbatch slurm/pretrain.sh
+#   # arm 3 (warm-start from the arm-4 export):
+#   PRETRAINED_MODEL=runs/modernbert-bpe-scratch/hf_format \
+#     TOKENIZED_DATASET_PATH=data/greekbpe_tokenized_open_greek_dataset_v2 \
+#     CONFIG_PATH=configs/train-modernbert.yaml sbatch slurm/pretrain.sh
+#
+# NOTE: the BPE arm needs the Greek-BPE tokenized corpus (different vocab),
+# built with:  python scripts/prepare_data.py \
+#                 --tokenizer tokenizers/modernbert-greek-tokenizer \
+#                 --out data/greekbpe_tokenized_open_greek_dataset_v2
+# =============================================================================
+
+lr: 2e-4
+max_lr: 2e-4
+pct_start: 0.05
+mask_prob: 0.30
+
+# Same batch/epoch budget as arm 1 for comparability. ModernBERT-base is
+# ~2.5x BERT-base (22 layers, 768 hidden, gated MLP), so wall-clock per epoch
+# is higher; num_epochs is the same TOKEN budget in epoch terms but ~2.5x the
+# compute. Lower num_epochs if you raise batch_size.
+batch_size: 16
+num_epochs: 40
+gradient_accumulation_steps: 1
+
+weight_decay: 0.01
+use_mixed_precision: true   # bf16 (TrainingConfig.bf16 default)
+
+# --- Arm selection -----------------------------------------------------------
+# Arm 4 (from scratch): leave pretrained_model null and set model_config +
+# tokenizer explicitly.
+# Arm 3 (warm start): set pretrained_model to an exported ModernBERT-Greek
+# checkpoint; model_config/tokenizer are then read from that checkpoint.
+pretrained_model: null
+model_config: "answerdotai/ModernBERT-base"
+# v2 = the CLEAN retrain from scripts/train_bpe.py. Do NOT use the v1
+# (tokenizers/modernbert-greek-tokenizer) — it is corrupted (mojibake vocab,
+# see docs/EXPERIMENTS-2X2.md). If you have not yet run train_bpe.py, run it
+# first; this path will not exist until then.
+tokenizer: "tokenizers/modernbert-greek-tokenizer-v2"
+
+# Greek-BPE tokenized corpus (50k vocab). NOT the nlpaueb/WordPiece one.
+# Built by: python scripts/prepare_data.py \
+#     --tokenizer tokenizers/modernbert-greek-tokenizer-v2 \
+#     --out data/greekbpe_tokenized_open_greek_dataset_v2
+tokenized_dataset_path: "../data/greekbpe_tokenized_open_greek_dataset_v2"
+
+log_interval: 100
+checkpoint_dir: "../scripts/checkpoints"
+tensorboard_dir: "../scripts/runs"
+output_dir: "../models/ManualExport"

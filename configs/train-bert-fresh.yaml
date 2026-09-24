@@ -1,0 +1,55 @@
+# =============================================================================
+# GreekBERT pretraining — ARM 2 of the 2x2 comparison (docs/EXPERIMENTS-2X2.md)
+#
+#   BERT-base architecture, randomly initialized
+#   + aristo/nlpaueb 35k WordPiece tokenizer (same vocab as arm 1)
+#
+# Isolates the ARCHITECTURE axis at fixed tokenizer: arm 2 vs arm 1 answers
+# "does a from-scratch BERT on this corpus beat continuing aristoBERTo?" and
+# arm 2 vs arm 3/4 answers "BERT trunk vs ModernBERT trunk at the same token
+# budget" (combined with the tokenizer axis).
+#
+# Same RoBERTa-style recipe as arm 1 (configs/train.yaml) so the only
+# difference from arm 1 is pretrained weights: null here vs aristoBERTo there.
+#
+# Launch (submit from the project root):
+#   RUN_NAME=bert-fresh-35k TOKENIZED_DATASET_PATH=data/nlpaueb_tokenized_open_greek_dataset_v2 \
+#     CONFIG_PATH=configs/train-bert-fresh.yaml sbatch slurm/pretrain.sh
+#
+# NOTE: arm 2 uses the SAME nlpaueb/WordPiece tokenized corpus as arm 1
+# (nlpaueb_tokenized_open_greek_dataset_v2), NOT the Greek-BPE one.
+#
+# Fresh-init note: this model starts from zero. 14B tokens (40 epochs at
+# batch 128) is a BUDGET, not a convergence guarantee — watch the
+# "NOT converged" flag in the log and the best_epoch in metrics.json. A
+# from-scratch BERT typically wants more tokens than a continued one; if the
+# arm-1 (continued) val loss is already below arm-2's by epoch ~10, the
+# comparison is answerable and you can stop early.
+# =============================================================================
+
+lr: 2e-4
+max_lr: 2e-4
+pct_start: 0.05
+mask_prob: 0.30
+
+batch_size: 16
+num_epochs: 40
+gradient_accumulation_steps: 1
+
+weight_decay: 0.01
+use_mixed_precision: true   # bf16 (TrainingConfig.bf16 default)
+
+# --- Arm selection -----------------------------------------------------------
+# Arm 2: fresh BERT on the aristo vocab. pretrained_model null + explicit
+# architecture config + tokenizer.
+pretrained_model: null
+model_config: "configs/bert-fresh-35k"
+tokenizer: "nlpaueb/bert-base-greek-uncased-v1"
+
+# nlpaueb/WordPiece tokenized corpus (35000 vocab) — SAME as arm 1.
+tokenized_dataset_path: "../data/nlpaueb_tokenized_open_greek_dataset_v2"
+
+log_interval: 100
+checkpoint_dir: "../scripts/checkpoints"
+tensorboard_dir: "../scripts/runs"
+output_dir: "../models/ManualExport"

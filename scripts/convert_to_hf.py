@@ -23,7 +23,7 @@ from transformers import AutoConfig, AutoModelForMaskedLM, AutoTokenizer
 
 from paths import repo_path
 from runs import record_result, record_run_provenance
-from utils import TrainingConfig
+from utils import TrainingConfig, resolve_model_path
 
 # Fallback tokenizer used only when training from scratch (pretrained_model: null).
 SCRATCH_TOKENIZER = str(repo_path("tokenizers", "modernbert-greek-tokenizer"))
@@ -74,20 +74,33 @@ def build_model_and_tokenizer(hp_config: TrainingConfig):
     set before construction, the architecture comes from the config, and the
     vocab is asserted to match the tokenizer before anything is written.
     """
-    if not hp_config.pretrained_model:
-        tokenizer = AutoTokenizer.from_pretrained(SCRATCH_TOKENIZER)
-        config = AutoConfig.from_pretrained("answerdotai/ModernBERT-base")
-        # Set BEFORE building the model — this is the bug that made the
-        # from-scratch arm unexportable.
-        config.vocab_size = len(tokenizer)
-        config.bos_token_id = tokenizer.bos_token_id
-        config.eos_token_id = tokenizer.eos_token_id
-        config.pad_token_id = tokenizer.pad_token_id
-        config.cls_token_id = tokenizer.cls_token_id
-        config.sep_token_id = tokenizer.sep_token_id
-    else:
+    # Same (architecture x tokenizer) resolution as train.py, so an export
+    # always rebuilds exactly what was trained. pretrained_model set = arm 1
+    # (load config+tokenizer from the checkpoint); null = fresh-init arms
+    # (2: BERT 35k, 3/4: ModernBERT + 50k BPE) using model_config + tokenizer.
+    if hp_config.pretrained_model:
         config = AutoConfig.from_pretrained(hp_config.pretrained_model)
         tokenizer = AutoTokenizer.from_pretrained(hp_config.pretrained_model)
+    else:
+        tok_path = resolve_model_path(hp_config.tokenizer or SCRATCH_TOKENIZER)
+        if not hp_config.model_config:
+            raise SystemExit(
+                "pretrained_model is null but model_config is not set. Fresh-init "
+                "arms must point model_config at a BERT or ModernBERT config dir."
+            )
+        tokenizer = AutoTokenizer.from_pretrained(tok_path)
+        config = AutoConfig.from_pretrained(resolve_model_path(hp_config.model_config))
+        # vocab_size must be set BEFORE the model is built — this is the bug
+        # that made the from-scratch arm unexportable (audit item 9).
+        config.vocab_size = len(tokenizer)
+        for attr, tok_attr in (("pad_token_id", "pad_token_id"), ("cls_token_id", "cls_token_id"),
+                               ("sep_token_id", "sep_token_id"), ("bos_token_id", "bos_token_id"),
+                               ("eos_token_id", "eos_token_id")):
+            v = getattr(tokenizer, tok_attr, None)
+            if isinstance(v, int) and v >= 0:
+                setattr(config, attr, v)
+        if getattr(config, "bos_token_id", None) is None:
+            config.bos_token_id = 0
 
     if config.vocab_size != len(tokenizer):
         raise ValueError(

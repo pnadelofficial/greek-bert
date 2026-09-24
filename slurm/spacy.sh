@@ -13,6 +13,11 @@
 # Submit from the project root so logs land in logs/.
 # =============================================================================
 #SBATCH -J GreekBERT-SpaCy
+#SBATCH -p gpu
+#SBATCH --gres=gpu:b200:1
+#SBATCH --mem=32g
+#SBATCH --reservation=new_gpu
+#SBATCH --time=02-00:00:00
 #SBATCH --output=logs/GreekBERT-SpaCy.%j.%N.out
 #SBATCH --error=logs/GreekBERT-SpaCy.%j.%N.err
 #SBATCH --mail-type=ALL
