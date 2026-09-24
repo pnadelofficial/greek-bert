@@ -50,10 +50,12 @@ Output is a HuggingFace ``DatasetDict`` with train/test splits, saved with
 from __future__ import annotations
 
 import argparse
+import gc
 import json
 import random
 import re
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -87,6 +89,14 @@ def parse_args() -> argparse.Namespace:
                    help="Max tokens per training sequence (BERT: 512).")
     p.add_argument("--ignore-length", type=int, default=16,
                    help="Drop documents shorter than this many tokens.")
+    p.add_argument("--text-shard-bytes", type=int, default=512 * 1024 * 1024,
+                   help="Max total text bytes per raw-text shard. The whole "
+                        "corpus is NEVER concatenated into one pyarrow string "
+                        "column: HuggingFace datasets' from_dict/concat hit "
+                        "pyarrow's 2 GB 'offset overflow' on a single string "
+                        "array, so docs are split into shards of at most this "
+                        "many bytes and tokenized shard-by-shard. (512 MiB "
+                        "leaves 4x headroom under the 2 GB limit.)")
     return p.parse_args()
 
 
@@ -148,12 +158,35 @@ def load_wikipedia(data_dir: Path) -> dict[str, str]:
     return docs
 
 
+def _shard_docs(doc_ids: Sequence[str], docs: dict[str, str],
+                max_bytes: int) -> list[list[str]]:
+    """Split doc ids into shards of at most `max_bytes` total text bytes.
+
+    Never concatenates all texts into one pyarrow string column (that is the
+    2 GB offset overflow the corpus triggers); it only groups doc IDS, and
+    each shard is small enough that its own text column is safe.
+    """
+    shards: list[list[str]] = []
+    cur: list[str] = []
+    cur_bytes = 0
+    for d in doc_ids:
+        b = len(docs[d].encode("utf-8"))
+        if cur and cur_bytes + b > max_bytes:
+            shards.append(cur)
+            cur, cur_bytes = [], 0
+        cur.append(d)
+        cur_bytes += b
+    if cur:
+        shards.append(cur)
+    return shards
+
+
 def main() -> int:
     args = parse_args()
     data_dir = Path(args.data_dir)
     out_path = Path(args.out)
 
-    from datasets import Dataset, DatasetDict
+    from datasets import Dataset, DatasetDict, concatenate_datasets
     from transformers import AutoTokenizer
 
     print("Loading raw corpus...")
@@ -163,6 +196,9 @@ def main() -> int:
         docs.update(load_europarl(data_dir))
     if args.include_wikidata:
         docs.update(load_wikipedia(data_dir))
+
+    total_bytes = sum(len(t.encode("utf-8")) for t in docs.values())
+    print(f"  corpus: {len(docs)} documents, {total_bytes / 1e9:.2f} GB of text")
 
     doc_ids = sorted(docs)  # deterministic order before the seeded shuffle
     rng = random.Random(args.seed)
@@ -179,26 +215,48 @@ def main() -> int:
 
     tokenizer = AutoTokenizer.from_pretrained(args.tokenizer)
 
-    print("\nTokenizing train documents...")
-    train_ds = Dataset.from_dict(
-        {"text": [docs[d] for d in train_ids]},
-    )
-    print("Tokenizing holdout documents...")
-    test_ds = Dataset.from_dict({"text": [docs[d] for d in holdout]})
+    def tokenize_shard(shard_ids: list[str]) -> Dataset:
+        """One shard: raw texts in, tokenized sequences out.
 
-    def chunk(ds: Dataset) -> Dataset:
-        # Pass a plain list of strings: newer `datasets` versions let a
-        # Dataset masquerade as a dict-of-columns for the tokenizer, but the
-        # call shape is version-fragile (old: needs list[str], new: accepts
-        # the Dataset directly). `list(ds["text"])` is unambiguous on every
-        # version (Column supports iteration and is a list itself on newer
-        # releases).
-        return Dataset.from_dict(tokenize_and_prepare_mlm(
-            {"text": list(ds["text"])}, tokenizer, is_main_process=True,
+        `examples` is a plain list of strings, not a Dataset: that keeps the
+        tokenizer call shape identical on every `datasets` version and keeps
+        the text alive only for this shard.
+        """
+        res = tokenize_and_prepare_mlm(
+            {"text": [docs[d] for d in shard_ids]}, tokenizer,
+            is_main_process=True,
             chunk_size=args.chunk_size, ignore_length=args.ignore_length,
-        ))
+        )
+        ds = Dataset.from_dict(res)
+        # Drop the python lists promptly; the next shard does not need them.
+        res.clear()
+        return ds
 
-    out = DatasetDict({"train": chunk(train_ds), "test": chunk(test_ds)})
+    def tokenize_split(split_name: str, split_ids: list[str]) -> Dataset:
+        shards = _shard_docs(split_ids, docs, args.text_shard_bytes)
+        print(f"\nTokenizing {split_name}: {len(split_ids)} docs in {len(shards)} "
+              f"text shards (<= {args.text_shard_bytes / 1e6:.0f} MB each)")
+        parts = []
+        for i, shard in enumerate(shards):
+            part = tokenize_shard(shard)
+            parts.append(part)
+            print(f"  {split_name} shard {i + 1}/{len(shards)}: "
+                  f"{len(shard)} docs -> {len(part)} sequences "
+                  f"(running total {sum(len(p) for p in parts)})")
+            del part
+            gc.collect()
+        if len(parts) == 1:
+            return parts[0]
+        # Concatenating equal-size shards is safe: each part's string columns
+        # are already gone (only int32 token ids remain), so the combined
+        # int arrays are far under any pyarrow offset limit.
+        return concatenate_datasets(parts)
+
+    train_ds = tokenize_split("train", train_ids)
+    gc.collect()
+    test_ds = tokenize_split("test", holdout)
+
+    out = DatasetDict({"train": train_ds, "test": test_ds})
     out.set_format(type="torch")
 
     # Provenance: what the split was, so validation numbers stay comparable.
@@ -211,6 +269,7 @@ def main() -> int:
             "n_docs_train": len(train_ids),
             "n_docs_test": len(holdout),
             "chunk_size": args.chunk_size,
+            "text_shard_bytes": args.text_shard_bytes,
             "include_wikidata": args.include_wikidata,
             "exclude_europarl": args.exclude_europarl,
             "tokenizer": args.tokenizer,
