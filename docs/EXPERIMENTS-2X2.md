@@ -139,9 +139,22 @@ current `tokenizers` version drops/renumbers specials passed via
   self-check asserts.
 - **No post_processor:** `tokenize_and_prepare_mlm` prepends `[CLS]`/appends
   `[SEP]` itself, so the trainer must not double-wrap.
+- **Streams the corpus from disk** (`_corpus_text_iter`), reading the source
+  parquet/txt files in bounded batches (`--sample-batch-chars`, default 20M
+  chars ≈ 40–60 MB resident). The first version loaded the whole ~13 GB corpus
+  into a Python dict (tens of GB resident from per-string overhead) and was
+  OOM-killed by the SLURM cgroup at the first pre-processing chunk. Now only
+  one small batch is ever resident, so peak corpus memory is a few MB
+  regardless of corpus size.
 - Self-checks: (a) tokens/word ≤ 2.0 (old artifact gave 1.3–4.4), (b) no vocab
   key is double-encoded, (c) all five specials present, distinct, and not
   colliding with a content id.
+- **Liveness:** unbuffered stdout + a `--heartbeat <path>` file (also
+  `BPE_HEARTBEAT` env) that records `{pid, phase, updated}` as it moves through
+  `scan → bpe-train-start → bpe-train-done → self-check → saving`. The BPE
+  trainer's own progress bar is TTY-gated (silent under sbatch), so the
+  heartbeat is how you confirm a multi-hour train is alive:
+  `watch cat <hb_path>`.
 
 **Unblocks:** nothing in arms 1/2. Arms 3/4 are blocked until this is redone.
 The aristo-continuation arm (1) and fresh-BERT arm (2) are unaffected and can

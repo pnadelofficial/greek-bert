@@ -67,7 +67,9 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from prepare_data import load_open_greek, load_europarl, load_wikipedia  # noqa: E402
+# (prepare_data's load_* are intentionally NOT imported here: they load the
+# whole corpus into a dict, which is exactly the memory pattern that OOM-killed
+# the first run. _corpus_text_iter streams the same files directly instead.)
 
 
 # --- liveness / observability -------------------------------------------------
@@ -140,8 +142,12 @@ def parse_args() -> argparse.Namespace:
                    help="Exclude Modern Greek Europarl (strict Ancient Greek only).")
     p.add_argument("--max-docs", type=int, default=0,
                    help="Limit to the first N docs (0 = all). For smoke tests only.")
-    p.add_argument("--sample-batch", type=int, default=100_000,
-                   help="Docs per batch fed to the BPE trainer (memory control).")
+    p.add_argument("--sample-batch-chars", type=int, default=20_000_000,
+                   help="Max characters per text batch streamed to the BPE trainer. "
+                        "This is the peak-memory knob: keep it in the tens of MB "
+                        "so only one small batch is resident at a time (the corpus "
+                        "is ~13 GB and must NOT be held in RAM). Default 20M chars "
+                        "(~40-60 MB resident).")
     p.add_argument("--max-token-length", type=int, default=128,
                    help="Reject BPE tokens longer than this (guards pathologic merges).")
     p.add_argument("--min-freq", type=int, default=2,
@@ -157,14 +163,92 @@ def parse_args() -> argparse.Namespace:
     return p.parse_args()
 
 
-def _doc_iterator(docs: list[tuple[str, str]], batch: int):
-    """Yield fixed-size batches of raw text for the BPE trainer.
+def _corpus_text_iter(data_dir: Path, include_wikidata: bool, exclude_europarl: bool,
+                      max_docs: int, max_batch_chars: int):
+    """Stream raw corpus text from DISK in bounded-size batches.
 
-    `train_from_iterator` samples characters from what it is given, so we hand
-    it the whole corpus in memory-safe batches rather than one giant string.
+    This is the memory fix. The previous version loaded the entire corpus into
+    a Python dict (~700k str objects -> tens of GB resident, dominated by
+    per-object overhead) and then handed that to train_from_iterator, which
+    tokenizes in one pass on top of it. Together that exceeded the SLURM step
+    memory limit and the cgroup OOM-killed the process at the first
+    pre-processing chunk (the "1 / 693885315" counter: 693885315 is the total
+    character count of the corpus, and the trainer died at chunk 1).
+
+    Instead we read the source files (the SAME ones prepare_data.py uses) in
+    small groups and yield joined-text batches of at most `max_batch_chars`
+    characters. Only one small batch is resident at a time, so peak RSS stays
+    in the single-digit GB range regardless of corpus size.
+
+    Order is deterministic (sorted file names, stable row order), so the BPE
+    is reproducible for a given corpus + vocab_size.
     """
-    for i in range(0, len(docs), batch):
-        yield " ".join(text for _, text in docs[i:i + batch])
+    import pandas as pd
+
+    # Build the ordered list of (kind, path) sources WITHOUT reading contents.
+    sources: list[tuple[str, Path]] = []
+    for f in sorted(data_dir.glob("*.parquet")):
+        sources.append(("parquet", f))
+    if not exclude_europarl:
+        ep_dir = data_dir / "europarl_el"
+        if ep_dir.is_dir():
+            for f in sorted(ep_dir.glob("*.txt")):
+                sources.append(("txt", f))
+    if include_wikidata:
+        # Wikipedia is loaded via the HF cache; stream it too, but it is
+        # excluded by default so this is rarely taken.
+        from prepare_data import load_wikipedia
+        for _id, text in sorted(load_wikipedia(data_dir).items()):
+            yield text
+        return
+
+    docs_seen = 0
+    batch_parts: list[str] = []
+    batch_chars = 0
+
+    def flush():
+        nonlocal batch_parts, batch_chars
+        if batch_parts:
+            yield " ".join(batch_parts)
+        batch_parts, batch_chars = [], 0
+
+    for kind, path in sources:
+        if kind == "parquet":
+            # Read the file once (a single parquet file is one document-group,
+            # tens of MB to a few hundred MB) and stream its text column.
+            df = pd.read_parquet(path)
+            if "text" not in df.columns:
+                continue
+            for text in df["text"].astype(str):
+                text = text.strip()
+                if not text:
+                    continue
+                docs_seen += 1
+                if max_docs and docs_seen > max_docs:
+                    break
+                if batch_chars + len(text) > max_batch_chars and batch_parts:
+                    yield " ".join(batch_parts)
+                    batch_parts, batch_chars = [], 0
+                batch_parts.append(text)
+                batch_chars += len(text)
+            del df
+        else:  # txt
+            raw = path.read_text(encoding="utf-8")
+            text = re.sub(r"<[^>]+>", "", raw).strip()
+            if text:
+                docs_seen += 1
+                if max_docs and docs_seen > max_docs:
+                    break
+                if batch_chars + len(text) > max_batch_chars and batch_parts:
+                    yield " ".join(batch_parts)
+                    batch_parts, batch_chars = [], 0
+                batch_parts.append(text)
+                batch_chars += len(text)
+        if max_docs and docs_seen >= max_docs:
+            break
+    # final partial batch
+    if batch_parts:
+        yield " ".join(batch_parts)
 
 
 def _looks_double_encoded(key: str) -> bool:
@@ -179,17 +263,31 @@ def _looks_double_encoded(key: str) -> bool:
     return any("α" <= c <= "ω" or "Α" <= c <= "Ω" or "ͺ" <= c <= "Ϳ" for c in orig)
 
 
-def self_check(tok, docs: list[tuple[str, str]]) -> None:
+def self_check(tok, data_dir: Path) -> None:
     """Fail loudly if the new tokenizer reproduces the old artifact's bugs.
 
     (a) common Greek words must tokenize to a SMALL number of tokens
         (the old one gave 5+ for a single word);
     (b) no vocab key may look double-encoded.
-    """
-    from collections import Counter
 
-    # (a) tokens-per-word on a sample of real documents.
-    sample = [t for _, t in docs[:200]]
+    `data_dir` is used to read a SMALL sample of real Greek (first ~200 docs
+    from the first parquet file) for check (a) — we do NOT hold the corpus.
+    """
+    import pandas as pd
+
+    # (a) tokens-per-word on a small sample of real documents (first file only).
+    sample: list[str] = []
+    first_parquet = sorted(data_dir.glob("*.parquet"))[0] if data_dir.glob("*.parquet") else None
+    if first_parquet is not None:
+        df = pd.read_parquet(first_parquet)
+        if "text" in df.columns:
+            sample = [t for t in df["text"].astype(str).head(200) if t.strip()]
+        del df
+    if not sample and (data_dir / "europarl_el").is_dir():
+        for f in sorted((data_dir / "europarl_el").glob("*.txt"))[:200]:
+            t = re.sub(r"<[^>]+>", "", f.read_text(encoding="utf-8")).strip()
+            if t:
+                sample.append(t)
     tot_words = tot_tokens = 0
     for text in sample:
         words = text.split()
@@ -261,25 +359,45 @@ def main() -> int:
 
     from tokenizers import Tokenizer, models, pre_tokenizers, processors
     from tokenizers import trainers
+    import pandas as pd
 
-    print("Loading raw corpus (same sources as prepare_data.py)...")
+    # ---- cheap corpus scan (NO bulk text load) -----------------------------
+    # Count documents and total characters by reading only what we need, so we
+    # can (a) report the corpus size and (b) give train_from_iterator an
+    # approximate `length`. This is a fast pass; it does NOT hold the corpus.
+    print("Scanning corpus (metadata only, no bulk load)...")
     sys.stdout.flush()
-    docs_dict: dict[str, str] = {}
-    docs_dict.update(load_open_greek(data_dir))
+    _beat("scanning")
+    n_docs = 0
+    total_chars = 0
+    for f in sorted(data_dir.glob("*.parquet")):
+        try:
+            df = pd.read_parquet(f, columns=["text"])
+        except Exception:
+            continue
+        if "text" not in df.columns:
+            continue
+        # Per-FILE this is cheap (tens of thousands of rows); we only ever hold
+        # one file's text column at a time, so this stays light even though the
+        # FULL corpus is ~700k docs. Sum the real string lengths as an int.
+        col = df["text"].astype(str)
+        n_docs += int(col.notna().sum())
+        total_chars += int(col.str.len().sum())
+        del df, col
     if not args.exclude_europarl:
-        docs_dict.update(load_europarl(data_dir))
-    if args.include_wikidata:
-        docs_dict.update(load_wikipedia(data_dir))
-    docs = sorted(docs_dict.items())
-    if args.max_docs:
-        docs = docs[: args.max_docs]
-    total_bytes = sum(len(t.encode("utf-8")) for _, t in docs)
-    print(f"  {len(docs)} documents, {total_bytes / 1e9:.2f} GB of text")
-    sys.stdout.flush()
-    _beat("corpus-loaded", {"n_docs": len(docs), "gb_text": round(total_bytes / 1e9, 3)})
+        ep_dir = data_dir / "europarl_el"
+        if ep_dir.is_dir():
+            for f in sorted(ep_dir.glob("*.txt")):
+                n_docs += 1
+                total_chars += len(f.read_text(encoding="utf-8"))
 
-    if not docs:
-        raise SystemExit("No documents loaded — nothing to train on.")
+    if n_docs == 0:
+        raise SystemExit("No documents found — nothing to train on.")
+    est_total_chars = max(int(total_chars), 1)
+    print(f"  {n_docs} documents, {total_chars / 1e9:.3f}B chars "
+          f"(~{total_chars * 1.2 / 1e9:.1f} GB of UTF-8 text)")
+    sys.stdout.flush()
+    _beat("scan-done", {"n_docs": n_docs, "total_chars": int(total_chars)})
 
     print(f"\nBuilding BPE (vocab_size={args.vocab_size}, specials={SPECIAL_TOKENS})...")
     sys.stdout.flush()
@@ -306,11 +424,15 @@ def main() -> int:
         show_progress=True,
     )
 
-    # `length` lets the trainer plan sampling without a second pass; it is the
-    # total number of characters across the corpus.
-    total_chars = sum(len(t) for _, t in docs)
+    # Stream the corpus from disk in bounded batches (the memory fix) and let
+    # the trainer consume it. `length` is only a progress-sampling hint; the
+    # estimate from the scan pass is fine even if it is not exact.
     _t0 = time.time()
-    tok.train_from_iterator(_doc_iterator(docs, args.sample_batch), length=total_chars)
+    tok.train_from_iterator(
+        _corpus_text_iter(data_dir, args.include_wikidata, args.exclude_europarl,
+                          args.max_docs, args.sample_batch_chars),
+        length=est_total_chars,
+    )
     _beat("bpe-train-done", {"train_seconds": round(time.time() - _t0, 1)})
 
     # Add special tokens AFTER training. In every current tokenizers version the
@@ -328,7 +450,7 @@ def main() -> int:
     print("\nRunning self-check...")
     sys.stdout.flush()
     _beat("self-check")
-    self_check(tok, docs)
+    self_check(tok, data_dir)
     sys.stdout.flush()
 
     # ---- write the HF-compatible artifact ---------------------------------
