@@ -8,9 +8,16 @@
 # =============================================================================
 
 # --- Learning rate schedule --------------------------------------------------
-# RoBERTa used 6e-4 for the base model with 5% linear warmup.
-lr: 6e-4            # base LR (scaled by the OneCycle warmup)
-max_lr: 6e-4        # peak LR after warmup
+# RoBERTa's 6e-4 was tuned for an 8k-sequence batch on a FROM-SCRATCH model.
+# This run CONTINUES a converged aristoBERTo at effective batch 128, where 6e-4
+# is far too hot (audit item 4); the epoch-20 curve was still descending
+# monotonically, consistent with an LR that overshoots. 2e-4 is the upper end
+# of the audit's recommended 1e-4-2e-4 band for continued pretraining.
+# OneCycleLR uses max_lr as the peak and ignores `lr` entirely, so both are set
+# to the same value on purpose (train.py prints the scheduler's real LR to
+# verify this).
+lr: 2e-4            # base LR (equals max_lr; see above)
+max_lr: 2e-4        # peak LR after warmup
 pct_start: 0.05     # 5% of total steps spent warming up
 
 # --- MLM masking -------------------------------------------------------------
@@ -19,10 +26,15 @@ pct_start: 0.05     # 5% of total steps spent warming up
 mask_prob: 0.30
 
 # --- Batch size and training length -----------------------------------------
-# RoBERTa used an 8k-sequence batch; we are GPU-limited.
 # Effective batch = batch_size * world_size * gradient_accumulation_steps
+# = 16 x 8 x 1 = 128 sequences (65k tokens) by default.
+# A BERT-base MLM at 512 tokens fits 128-256 per H200 with bf16 (audit Tier 3),
+# so raise batch_size to ~128 for ~8x throughput; with an 8x larger batch keep
+# LR at ~2e-4 (or raise toward 4e-4) rather than 6e-4.
 batch_size: 16                    # per-GPU
-num_epochs: 20
+# Budget to train PAST the epoch-20 plateau the previous run hit: at batch 16
+# this is ~215k optimizer steps (~14B tokens). Lower if you raise batch_size.
+num_epochs: 40
 gradient_accumulation_steps: 1
 
 # --- Optimizer ---------------------------------------------------------------
@@ -31,6 +43,7 @@ gradient_accumulation_steps: 1
 weight_decay: 0.01
 
 # --- Training behaviour ------------------------------------------------------
+# AMP: bf16 by default (no GradScaler); the bf16 knob lives in TrainingConfig.
 use_mixed_precision: true
 
 # --- Model and data ----------------------------------------------------------

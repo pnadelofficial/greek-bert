@@ -137,7 +137,6 @@ def tokenize_and_prepare_mlm(examples, tokenizer, is_main_process, chunk_size=10
 
     all_input_ids = []
     all_attention_masks = []
-    all_labels = []
 
     iterator = tqdm(tokenized["input_ids"], total=len(tokenized["input_ids"]), disable=not is_main_process)
     for input_ids in iterator:
@@ -154,18 +153,23 @@ def tokenize_and_prepare_mlm(examples, tokenizer, is_main_process, chunk_size=10
                 padding_length = chunk_size - len(bert_input_ids)
                 bert_input_ids += [tokenizer.pad_token_id] * padding_length
                 bert_attention_mask += [0] * padding_length
-            labels = bert_input_ids.copy()
             all_input_ids.append(bert_input_ids)
             all_attention_masks.append(bert_attention_mask)
-            all_labels.append(labels)
-    return {"input_ids": all_input_ids, "attention_mask": all_attention_masks, "labels": all_labels}
+    # NOTE: no `labels` column. Masks and labels are generated dynamically per
+    # step by mlm_masking, so a stored labels column (input_ids copied into
+    # itself) was pure dead weight: it tripled the memory traffic of every
+    # dataset row (~2.7B tokens x 3 int64 vs x 2). It also made every run
+    # REQUIRE an old-format dataset with the stale column. Old on-disk
+    # datasets that still carry it are handled by train.py's remove_columns.
+    return {"input_ids": all_input_ids, "attention_mask": all_attention_masks}
 
-# Special token IDs in the BERT-family vocabularies used by this repo
-# (nlpaueb/bert-base-greek-uncased-v1 and tokenizers/modernbert-greek-tokenizer
-# both use the [PAD]=0 / [CLS]=101 / [SEP]=102 layout). These are only the
-# fallback for positions we cannot read off the tokenizer; mlm_masking takes the
-# real ids as arguments so a vocabulary with a different layout still works.
-DEFAULT_SPECIAL_TOKEN_IDS = (0, 101, 102)
+# Fallback special-token IDs for vocabularies where we cannot read the ids off
+# the tokenizer (e.g. the legacy nlpaueb WordPiece layout [PAD]=0 / [CLS]=101 /
+# [SEP]=102 / [MASK]=103). This constant is NOT consulted by mlm_masking, which
+# always takes the real ids as arguments: tokenizers/modernbert-greek-tokenizer
+# uses a DIFFERENT layout ([PAD]=5, [CLS]=3, [SEP]=4, [MASK]=6) and train.py
+# resolves every id from the tokenizer at runtime, so a vocabulary with a
+# different layout still works.
 
 
 def mlm_masking(

@@ -105,8 +105,11 @@ def main():
         print("Loading dataset...")
     
     tokenized_datasets = load_from_disk(hp_config.tokenized_dataset_path)
+    # New-format datasets store only input_ids/attention_mask; older ones also
+    # carry a stale `labels` column (a copy of input_ids, never used because
+    # masks/labels are generated dynamically per step). Drop it if present.
     tokenized_datasets = tokenized_datasets.remove_columns(
-        [col for col in tokenized_datasets['train'].column_names if col not in ['input_ids', 'attention_mask', 'labels']]
+        [col for col in tokenized_datasets['train'].column_names if col not in ['input_ids', 'attention_mask']]
     )
     tokenized_datasets.set_format(type="torch")
     
@@ -225,7 +228,12 @@ def main():
     # fallback path. Keeping a GradScaler around under bf16 costs a pointless
     # unscale_() pass over every parameter each step.
     use_fp16 = hp_config.use_mixed_precision and not hp_config.bf16
-    scaler = GradScaler() if use_fp16 else None
+    # torch.amp.GradScaler("cuda") on torch>=2.3; torch.cuda.amp.GradScaler before.
+    try:
+        from torch.amp import GradScaler
+    except ImportError:
+        from torch.cuda.amp import GradScaler
+    scaler = GradScaler("cuda") if use_fp16 else None
     
     num_training_steps = hp_config.num_epochs * int(len(train_dataloader)) // hp_config.gradient_accumulation_steps
     lr_scheduler = torch.optim.lr_scheduler.OneCycleLR(
@@ -303,7 +311,6 @@ def main():
         for step, batch in enumerate(iterator):
             input_ids = batch['input_ids']
             attention_mask = batch['attention_mask'].to(device)
-            labels = batch['labels']
 
             # Dynamic masking - generate fresh masks every forward pass (RoBERTa approach)
             masked_input_ids, masked_labels = mlm_masking(
@@ -403,7 +410,6 @@ def main():
             for batch in val_iterator:
                 input_ids = batch['input_ids']
                 attention_mask = batch['attention_mask'].to(device)
-                labels = batch['labels']
 
                 # Same masking recipe as training, so val loss is comparable to
                 # train loss and to other runs.

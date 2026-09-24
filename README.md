@@ -178,7 +178,9 @@ RoBERTa-inspired settings, based on [arxiv.org/abs/1907.11692](https://arxiv.org
 
 - **Dynamic masking** — fresh masks every forward pass (~0.5% GLUE gain)
 - **30% masking rate** — ModernBERT-style, more signal per step
-- **LR 6e-4** with 5% warmup (OneCycle)
+- **LR 2e-4** with 5% warmup (OneCycle). RoBERTa's 6e-4 assumes an 8k-sequence
+  batch and a from-scratch model; at effective batch 128 it is too hot for
+  continuing a converged aristoBERTo (audit item 4).
 - **Adam β₂ = 0.98** — stability at large batch
 
 Historical change notes from that work are in `docs/archive/`.

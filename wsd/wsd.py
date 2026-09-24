@@ -249,15 +249,17 @@ def _offsets_of(enc) -> list | None:
     return None
 
 
-# Which token of a multi-subword word to read. WordPiece puts the highest-value
-# piece first ("ἀρμον-" carries more than "-ία"), and first-piece is the
-# convention used by most WSD/NER implementations, so it is the default. The
-# last piece is the only one whose span covers the WHOLE word for the ~9-27% of
-# targets that are single-token, and some implementations prefer it because it
-# has absorbed the full contextual representation. Set TARGET_TOKEN_POSITION to
-# "first" or "last" to compare the two — it is a real modelling choice, not a
-# correctness one.
-TARGET_TOKEN_POSITION = "first"
+# Which token of a multi-subword word to read.
+#
+# The audit (item 8) asks for targets that "tokenize to exactly one token" —
+# i.e. a token whose span covers the WHOLE word. That is the LAST piece of a
+# WordPiece sequence (its offset span is the full word), so "last" is the
+# default: it keeps multi-token targets (reading the piece that absorbed the
+# full contextual representation) and is identical to the first piece for
+# single-token words. "first" is the convention used by some WSD/NER
+# implementations and is kept as a comparison mode; the target-tokenization
+# report records the mode so results stay attributable.
+TARGET_TOKEN_POSITION = "last"
 
 
 def resolve_target_position(tokenizer, text: str, word_index: int) -> int | None:
@@ -301,7 +303,11 @@ def resolve_target_position(tokenizer, text: str, word_index: int) -> int | None
 
     if not candidates:
         return None
-    return candidates[0] if TARGET_TOKEN_POSITION == "first" else candidates[-1]
+    if TARGET_TOKEN_POSITION == "first":
+        return candidates[0]
+    # "last": the final piece of the word. Its offset span covers the whole
+    # word, which is what "the target tokenizes to exactly one token" means.
+    return candidates[-1]
 
 
 def wsd_collate(features, tokenizer):
@@ -573,9 +579,10 @@ def run_word(model, tokenizer, word_key: str, cfg: WSDConfig, seeds: list[int], 
     )
 
     report = target_tokenization_report(full, tokenizer, spec["surface"])
+    report["token_position"] = TARGET_TOKEN_POSITION
     print(f"  target-token check [{model_label}/{word_key}]: "
           f"{report['examples']} examples, "
-          f"first-piece-of-target 100% (word_ids-verified), "
+          f"{TARGET_TOKEN_POSITION}-piece-of-target (word_ids-verified), "
           f"single-token {report['single_token_rate']:.1%}, [UNK] {report['unk_rate']:.1%}")
     if report["dropped_unaligned"]:
         print(f"  NOTE: {report['dropped_unaligned']} examples were dropped as "
@@ -710,6 +717,7 @@ def main():
                 "final_mean": word_res["final_mean"], "final_std": word_res["final_std"],
                 "best_per_seed": word_res["best_per_seed"],
                 "target_single_token_rate": word_res["target_tokenization"]["single_token_rate"],
+                "target_token_position": word_res["target_tokenization"].get("token_position"),
             }
             print(f"  {res['label']:<28} {key:<10} "
                   f"best {word_res['best_mean']:.4f} +/- {word_res['best_std']:.4f}   "
