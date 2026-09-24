@@ -26,7 +26,7 @@
 
 set -euo pipefail
 
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/env.sh"
+source "slurm/env.sh"
 
 NUM_GPUS="${1:-8}"
 

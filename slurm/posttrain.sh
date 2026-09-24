@@ -29,7 +29,7 @@
 
 set -euo pipefail
 
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/env.sh"
+source "slurm/env.sh"
 
 STAGES="${STAGES:-convert,wsd,spacy}"
 CONFIG_PATH="${CONFIG_PATH:-$PROJECT_ROOT/configs/train.yaml}"

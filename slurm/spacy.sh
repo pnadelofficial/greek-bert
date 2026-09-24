@@ -25,7 +25,7 @@
 
 set -euo pipefail
 
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/env.sh"
+source "slurm/env.sh"
 
 SPACY_CONFIG="${SPACY_CONFIG:-configs/gpu_default.cfg}"
 MODEL_DIR="${MODEL_DIR:-$MODELS_DIR/current}"
