@@ -54,15 +54,65 @@ Then:
 from __future__ import annotations
 
 import argparse
+import atexit
+import gc
 import json
+import os
 import re
+import signal
 import sys
+import time
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from prepare_data import load_open_greek, load_europarl, load_wikipedia  # noqa: E402
+
+
+# --- liveness / observability -------------------------------------------------
+# The `tokenizers` BPE trainer prints "Pre-processing sequences" and then works
+# for a LONG time with NO further output: its progress bar is TTY-gated, so
+# under sbatch (no TTY) it is silent for the entire train. That looks like a
+# hang, but it is not. To make a silent multi-hour job diagnosable we:
+#   * flush stdout after every print (so the sbatch log actually shows progress
+#     instead of being lost in a pipe buffer), and
+#   * write a heartbeat file (PID + phase + wall time) that you can watch from
+#     another session to confirm the process is alive and making progress.
+_HEARTBEAT: dict = {"pid": None, "phase": "start", "started": None, "updated": None}
+
+
+def _beat(phase: str, extra: dict | None = None) -> None:
+    """Record progress in the heartbeat dict and, if requested, on disk."""
+    _HEARTBEAT["phase"] = phase
+    _HEARTBEAT["updated"] = time.time()
+    if extra:
+        _HEARTBEAT.update(extra)
+    path = os.environ.get("BPE_HEARTBEAT")
+    if path:
+        try:
+            Path(path).write_text(json.dumps(_HEARTBEAT, indent=2, default=str))
+        except Exception:
+            pass
+
+
+def _final_flush_guard() -> None:
+    # Guarantees the last print() reaches the sbatch log even if the process
+    # exits hard (segfault/OOM) — Python's atexit runs on normal and most hard
+    # exits of the interpreter, and we flush on signal too.
+    try:
+        sys.stdout.flush()
+        sys.stderr.flush()
+    except Exception:
+        pass
+
+
+def _on_signal(signum, frame):  # pragma: no cover - only fires on kill
+    _beat(f"signal-{signum}")
+    _final_flush_guard()
+    # Re-raise default behavior so the job still dies on SIGTERM/SIGINT.
+    signal.signal(signum, signal.SIG_DFL)
+    os.kill(os.getpid(), signum)
 
 # Special tokens. The `tokenizers` BPE trainer (all current versions) stores
 # these in the saved file's `added_tokens_decoder`, and on reload assigns them
@@ -96,6 +146,10 @@ def parse_args() -> argparse.Namespace:
                    help="Reject BPE tokens longer than this (guards pathologic merges).")
     p.add_argument("--min-freq", type=int, default=2,
                    help="Min pair frequency to merge (standard BPE).")
+    p.add_argument("--heartbeat", default=None,
+                   help="Path to a heartbeat file written with PID/phase/wall-time "
+                        "so a silent (no-TTY) train can be confirmed alive from "
+                        "another session. Also honored via the BPE_HEARTBEAT env var.")
     # NOTE: no --seed. The `tokenizers` BPE trainer is deterministic given the
     # same corpus + vocab_size (no random sampling in the Rust core), so there
     # is no RNG to seed. (tokenizers >= 0.14 exposes a `seed` kwarg on some
@@ -186,10 +240,30 @@ def main() -> int:
     out_dir = Path(args.out)
     out_dir.parent.mkdir(parents=True, exist_ok=True)
 
+    # Force unbuffered stdout so every print() hits the sbatch log immediately
+    # (a piped/redirected stdout otherwise buffers and makes a long job look dead).
+    try:
+        sys.stdout.reconfigure(line_buffering=True)
+    except Exception:
+        pass
+    # Heartbeat: env var wins, else the --heartbeat flag.
+    if args.heartbeat and not os.environ.get("BPE_HEARTBEAT"):
+        os.environ["BPE_HEARTBEAT"] = args.heartbeat
+    _HEARTBEAT["pid"] = os.getpid()
+    _HEARTBEAT["started"] = time.time()
+    atexit.register(_final_flush_guard)
+    for _sig in (signal.SIGTERM, signal.SIGINT):
+        try:
+            signal.signal(_sig, _on_signal)
+        except Exception:
+            pass
+    _beat("start", {"out": str(out_dir), "vocab_size": args.vocab_size})
+
     from tokenizers import Tokenizer, models, pre_tokenizers, processors
     from tokenizers import trainers
 
     print("Loading raw corpus (same sources as prepare_data.py)...")
+    sys.stdout.flush()
     docs_dict: dict[str, str] = {}
     docs_dict.update(load_open_greek(data_dir))
     if not args.exclude_europarl:
@@ -201,11 +275,21 @@ def main() -> int:
         docs = docs[: args.max_docs]
     total_bytes = sum(len(t.encode("utf-8")) for _, t in docs)
     print(f"  {len(docs)} documents, {total_bytes / 1e9:.2f} GB of text")
+    sys.stdout.flush()
+    _beat("corpus-loaded", {"n_docs": len(docs), "gb_text": round(total_bytes / 1e9, 3)})
 
     if not docs:
         raise SystemExit("No documents loaded — nothing to train on.")
 
     print(f"\nBuilding BPE (vocab_size={args.vocab_size}, specials={SPECIAL_TOKENS})...")
+    sys.stdout.flush()
+    # IMPORTANT: the next call (train_from_iterator) prints "Pre-processing
+    # sequences" and then runs for a LONG time with NO further output — its
+    # progress bar is TTY-gated, so under sbatch it is silent for the whole
+    # train. This is EXPECTED, not a hang. Watch the heartbeat file (or
+    # `ps -o etime= -p <PID>` / RSS growth in `top`) to confirm it is alive.
+    # A full 700M-token corpus takes on the order of hours.
+    _beat("bpe-train-start", {"note": "silent until done; see heartbeat"})
 
     # Build the Tokenizer with a BPE model. We deliberately do NOT use
     # ByteLevel: for a diacritic-rich script we want whole-word BPE tokens, and
@@ -225,7 +309,9 @@ def main() -> int:
     # `length` lets the trainer plan sampling without a second pass; it is the
     # total number of characters across the corpus.
     total_chars = sum(len(t) for _, t in docs)
+    _t0 = time.time()
     tok.train_from_iterator(_doc_iterator(docs, args.sample_batch), length=total_chars)
+    _beat("bpe-train-done", {"train_seconds": round(time.time() - _t0, 1)})
 
     # Add special tokens AFTER training. In every current tokenizers version the
     # trainer drops/renumbers specials passed via BpeTrainer(special_tokens=...),
@@ -240,10 +326,15 @@ def main() -> int:
     # pair-template validation.
 
     print("\nRunning self-check...")
+    sys.stdout.flush()
+    _beat("self-check")
     self_check(tok, docs)
+    sys.stdout.flush()
 
     # ---- write the HF-compatible artifact ---------------------------------
     print(f"\nWriting tokenizer to {out_dir} ...")
+    sys.stdout.flush()
+    _beat("saving")
     out_dir.mkdir(parents=True, exist_ok=True)
     tok.save(str(out_dir / "tokenizer.json"))
 
