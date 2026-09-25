@@ -1,0 +1,19 @@
+{
+  "model_type": null,
+  "tokenizer_class": "PreTrainedTokenizerFast",
+  "unk_token": "[UNK]",
+  "cls_token": "[CLS]",
+  "sep_token": "[SEP]",
+  "pad_token": "[PAD]",
+  "mask_token": "[MASK]",
+  "bos_token": null,
+  "eos_token": "<|padding|>",
+  "add_prefix_space": false,
+  "clean_up_tokenization_spaces": true,
+  "model_max_length": 512,
+  "model_input_names": [
+    "input_ids",
+    "attention_mask"
+  ],
+  "extra_special_tokens": {}
+}

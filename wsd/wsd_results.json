@@ -1,0 +1,147 @@
+{
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "results": [
+    {
+      "model": "/cluster/tufts/perseuslab/pnadel01/greek-bert/models/greekbert-2025-09-18",
+      "label": "greekbert-2025-09-18",
+      "words": [
+        {
+          "word": "harmonia",
+          "target_tokenization": {
+            "surface": "\u03b1\u0314\u03c1\u03bc\u03bf\u03bd\u03b9\u03b1\u0301",
+            "examples": 538,
+            "dropped_unaligned": 0,
+            "single_token_rate": 0.08550185873605948,
+            "unk_rate": 0.0,
+            "token_position": "last"
+          },
+          "best_mean": 0.8481481481481481,
+          "best_std": 0.027467401804058003,
+          "best_min": 0.8240740740740741,
+          "best_max": 0.8888888888888888,
+          "final_mean": 0.8481481481481481,
+          "final_std": 0.027467401804058003,
+          "best_per_seed": [
+            0.8888888888888888,
+            0.8240740740740741,
+            0.8240740740740741,
+            0.8425925925925926,
+            0.8611111111111112
+          ],
+          "final_per_seed": [
+            0.8888888888888888,
+            0.8240740740740741,
+            0.8240740740740741,
+            0.8425925925925926,
+            0.8611111111111112
+          ]
+        },
+        {
+          "word": "kosmos",
+          "target_tokenization": {
+            "surface": "\u03ba\u03bf\u0301\u03c3\u03bc\u03bf\u03c2",
+            "examples": 1375,
+            "dropped_unaligned": 0,
+            "single_token_rate": 0.2690909090909091,
+            "unk_rate": 0.0,
+            "token_position": "last"
+          },
+          "best_mean": 0.8909090909090909,
+          "best_std": 0.014316377952748748,
+          "best_min": 0.8763636363636363,
+          "best_max": 0.9127272727272727,
+          "final_mean": 0.8909090909090909,
+          "final_std": 0.014316377952748748,
+          "best_per_seed": [
+            0.8763636363636363,
+            0.88,
+            0.9127272727272727,
+            0.8909090909090909,
+            0.8945454545454545
+          ],
+          "final_per_seed": [
+            0.8763636363636363,
+            0.88,
+            0.9127272727272727,
+            0.8909090909090909,
+            0.8945454545454545
+          ]
+        }
+      ]
+    },
+    {
+      "model": "/cluster/tufts/perseuslab/pnadel01/greek-bert/models/external-aristoBERTo",
+      "label": "external-aristoBERTo",
+      "words": [
+        {
+          "word": "harmonia",
+          "target_tokenization": {
+            "surface": "\u03b1\u0314\u03c1\u03bc\u03bf\u03bd\u03b9\u03b1\u0301",
+            "examples": 538,
+            "dropped_unaligned": 0,
+            "single_token_rate": 0.08550185873605948,
+            "unk_rate": 0.0,
+            "token_position": "last"
+          },
+          "best_mean": 0.8092592592592591,
+          "best_std": 0.010557179862029049,
+          "best_min": 0.7962962962962963,
+          "best_max": 0.8240740740740741,
+          "final_mean": 0.8092592592592591,
+          "final_std": 0.010557179862029049,
+          "best_per_seed": [
+            0.8055555555555556,
+            0.8055555555555556,
+            0.8148148148148148,
+            0.7962962962962963,
+            0.8240740740740741
+          ],
+          "final_per_seed": [
+            0.8055555555555556,
+            0.8055555555555556,
+            0.8148148148148148,
+            0.7962962962962963,
+            0.8240740740740741
+          ]
+        },
+        {
+          "word": "kosmos",
+          "target_tokenization": {
+            "surface": "\u03ba\u03bf\u0301\u03c3\u03bc\u03bf\u03c2",
+            "examples": 1375,
+            "dropped_unaligned": 0,
+            "single_token_rate": 0.2690909090909091,
+            "unk_rate": 0.0,
+            "token_position": "last"
+          },
+          "best_mean": 0.874909090909091,
+          "best_std": 0.010476262029736654,
+          "best_min": 0.8654545454545455,
+          "best_max": 0.8909090909090909,
+          "final_mean": 0.874909090909091,
+          "final_std": 0.010476262029736654,
+          "best_per_seed": [
+            0.8654545454545455,
+            0.8654545454545455,
+            0.8763636363636363,
+            0.8763636363636363,
+            0.8909090909090909
+          ],
+          "final_per_seed": [
+            0.8654545454545455,
+            0.8654545454545455,
+            0.8763636363636363,
+            0.8763636363636363,
+            0.8909090909090909
+          ]
+        }
+      ]
+    }
+  ]
+}
