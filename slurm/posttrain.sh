@@ -40,12 +40,34 @@ CONFIG_PATH="${CONFIG_PATH:-$PROJECT_ROOT/configs/train.yaml}"
 MODEL_DIR="${MODEL_DIR:-$HF_EXPORT_DIR}"
 export MODEL_DIR
 
+# Resolve MODEL_DIR to its real path BEFORE anything else. models/current is a
+# manually maintained symlink, and a header that prints the LINK (not the
+# target) hid a stale pointer for one whole WSD+spaCy job: "post-train arm1"
+# actually fine-tuned models/greekbert-2025-09-18, and the mismatch only
+# surfaced ~20 minutes in, on wsd.py's "Encoder:" line, AFTER compute started.
+_realpath() {
+  readlink -f "$1" 2>/dev/null \
+    || python3 -c 'import os,sys;print(os.path.realpath(sys.argv[1]))' "$1" 2>/dev/null \
+    || echo "$1"
+}
+MODEL_DIR_REAL="$(_realpath "$MODEL_DIR")"
+# Canonicalize the run's export too, so a symlinked project root cannot make
+# the mismatch check below fire on the DEFAULT (correct) MODEL_DIR.
+HF_EXPORT_DIR_REAL="$(_realpath "$HF_EXPORT_DIR")"
+
 # spaCy config: gpu_default.cfg (no custom lemmatizer) or gpu_default_freq_lemma.cfg
 SPACY_CONFIG="${SPACY_CONFIG:-configs/gpu_default.cfg}"
 SPACY_CODE_ARG=()
 if [[ "$SPACY_CONFIG" == *freq_lemma* ]]; then
   SPACY_CODE_ARG=(--code "custom_components/lemmatizer.py")
 fi
+
+# Same fix as slurm/spacy.sh: the checked-in cfg hardcodes
+# components.transformer.model.name="../models/current", a static string that never
+# saw $MODEL_DIR. Without this override, spaCy trained from whatever models/current
+# pointed to instead of this run's own export ($HF_EXPORT_DIR) -- the same class of
+# bug as the WSD mismatch this file already guards against above.
+SPACY_CODE_ARG+=(--components.transformer.model.name "$MODEL_DIR_REAL")
 
 run_stage() { [[ ",$STAGES," == *",$1,"* ]]; }
 
@@ -54,11 +76,34 @@ run_stage() { [[ ",$STAGES," == *",$1,"* ]]; }
 if { run_stage wsd || run_stage spacy; } && [[ ! -f "$MODEL_DIR/config.json" ]]; then
   echo "ERROR: no HuggingFace model at MODEL_DIR=$MODEL_DIR" >&2
   echo "       Either include the convert stage (STAGES=convert,wsd,spacy)," >&2
-  echo "       or point MODEL_DIR at an existing export, e.g.:" >&2
-  echo "         MODEL_DIR=$MODELS_DIR/current STAGES=wsd,spacy sbatch slurm/posttrain.sh" >&2
+  echo "       or point MODEL_DIR at an existing export — normally THIS run's" >&2
+  echo "       own export, which the convert stage produces:" >&2
+  echo "         RUN_NAME=$RUN_NAME STAGES=convert,wsd,spacy sbatch slurm/posttrain.sh" >&2
+  echo "       Do NOT default to models/current: it points at the last manually" >&2
+  echo "       promoted model, which is often NOT the run being post-trained" >&2
+  echo "       (that is exactly how arm1's WSD run silently evaluated an old" >&2
+  echo "       Sep-2025 export)." >&2
   echo "       Available exports:" >&2
   "$PROJECT_ROOT/scripts/set_current_model.sh" --list >&2 || true
   exit 1
+fi
+
+# Warn before burning compute when the job's model is not this run's own
+# export. The default MODEL_DIR is $HF_EXPORT_DIR (this run), so this only
+# fires when the caller explicitly pointed elsewhere — e.g. a stale
+# models/current. It is a warning, not an error: re-evaluating an older model
+# under a new RUN_NAME is a legitimate ablation.
+if { run_stage wsd || run_stage spacy; } && [[ -f "$HF_EXPORT_DIR/config.json" ]] \
+   && [[ "$MODEL_DIR_REAL" != "$HF_EXPORT_DIR_REAL" ]]; then
+  echo "WARNING: MODEL_DIR is not this run's own export."
+  echo "         RUN_NAME     : $RUN_NAME"
+  echo "         run's export : $HF_EXPORT_DIR"
+  echo "         MODEL_DIR    : $MODEL_DIR -> $MODEL_DIR_REAL"
+  echo "         wsd/spacy will fine-tune from $MODEL_DIR_REAL, NOT from"
+  echo "         runs/$RUN_NAME/hf_format. If that is not intentional (e.g."
+  echo "         models/current still points at an old export), re-point it:"
+  echo "           scripts/set_current_model.sh $HF_EXPORT_DIR"
+  echo ""
 fi
 
 # Reports the REAL node identity: SLURM_JOB_ID can be inherited by a shell that
@@ -69,7 +114,11 @@ echo "Profile  : $PROFILE ($SBATCH_PARTITION / $SBATCH_GRES)"
 echo "Run name : $RUN_NAME"
 echo "Python   : $PYTHON_ENV"
 echo "Stages   : $STAGES"
-echo "Model    : $MODEL_DIR"
+if [[ "$MODEL_DIR_REAL" != "$MODEL_DIR" ]]; then
+  echo "Model    : $MODEL_DIR -> $MODEL_DIR_REAL"
+else
+  echo "Model    : $MODEL_DIR"
+fi
 echo "spaCy cfg: $SPACY_CONFIG"
 
 # --- 1. convert -------------------------------------------------------------
@@ -79,6 +128,12 @@ if run_stage convert; then
   py_run pretrain "$PROJECT_ROOT" \
     python scripts/convert_to_hf.py --config-path="$CONFIG_PATH"
   stage_done "convert -> $HF_EXPORT_DIR"
+  # models/current is deliberately NOT auto-updated: parallel posttrain jobs
+  # would race on one symlink. Standalone WSD/spaCy/sbert jobs that read
+  # models/current must be re-pointed explicitly.
+  echo "Tip: standalone jobs that read models/current still point at their"
+  echo "     previous target. To promote this export, run:"
+  echo "       scripts/set_current_model.sh $HF_EXPORT_DIR"
 fi
 
 if ! run_stage wsd && ! run_stage spacy; then

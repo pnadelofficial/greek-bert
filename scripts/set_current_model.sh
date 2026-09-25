@@ -19,6 +19,16 @@ if [[ "${1:-}" == "--list" || -z "${1:-}" ]]; then
   echo "Available exports in $MODELS_DIR:"
   find "$MODELS_DIR" -mindepth 1 -maxdepth 1 -type d \
     -exec sh -c 'test -f "$1/config.json" && echo "  $(basename "$1")"' _ {} \; 2>/dev/null | sort
+  # Run-scoped exports (posttrain's convert stage) live in
+  # runs/<RUN_NAME>/hf_format, NOT under models/. List them too: they were
+  # previously invisible here, which made the stale models/current pointer
+  # hard to notice (the export a run just produced never appeared in this
+  # list, so "current -> some-old-model" looked normal).
+  for d in "$REPO_ROOT"/runs/*/hf_format; do
+    [[ -f "$d/config.json" ]] || continue
+    run_name="$(basename "$(dirname "$d")")"
+    echo "  runs/$run_name/hf_format   (run-scoped export)"
+  done
   echo ""
   if [[ -e "$CURRENT" ]]; then
     echo "current -> $(readlink -f "$CURRENT")"

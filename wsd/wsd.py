@@ -29,6 +29,7 @@ from __future__ import annotations
 import argparse
 import copy
 import json
+import os
 import statistics
 import sys
 from dataclasses import dataclass, field, asdict
@@ -653,9 +654,22 @@ def summarize(best: list[float], final: list[float]) -> dict:
             "final_mean": f["mean"], "final_std": f["std"], "best_per_seed": best, "final_per_seed": final}
 
 
+def _label_for_model(model_path: str) -> str:
+    """Short, self-describing name for a model dir in reports and table rows.
+
+    Run-scoped exports (runs/<RUN_NAME>/hf_format) are labeled by the RUN NAME,
+    not the generic "hf_format" dir name, so results/table.md rows say which
+    run a number came from without having to read the path.
+    """
+    p = Path(model_path)
+    if p.name == "hf_format" and p.parent.name != "runs" and p.parent.parent.name == "runs":
+        return p.parent.name
+    return p.name if p.name not in ("", ".") else model_path
+
+
 def evaluate_model(model_path: str, seeds: list[int], words: list[str], num_epochs: int | None = None) -> dict:
     """Fine-tune + evaluate one encoder on all `words`, each fully independent."""
-    label = Path(model_path).name if Path(model_path).name not in ("", ".") else model_path
+    label = _label_for_model(model_path)
     print(f"\n{'=' * 64}\nEncoder: {model_path}\n{'=' * 64}")
 
     tokenizer = AutoTokenizer.from_pretrained(model_path)
@@ -697,6 +711,26 @@ def main():
             model_specs.append(args.baseline)
         else:
             model_specs.append(spec)
+
+    # Fail loud, BEFORE any compute, when "ours" does not resolve to this run's
+    # own export while a named run context is active ($RUN_DIR is exported by
+    # slurm/env.sh). The Sep-2025 incident: RUN_NAME=arm1-aristo-continuation
+    # with MODEL_DIR=models/current silently evaluated
+    # models/greekbert-2025-09-18 — an old export — and the numbers were
+    # recorded under the arm1 run name. slurm/posttrain.sh warns at the job
+    # level too; this covers direct `python wsd/wsd.py` invocations from other
+    # job scripts that source env.sh.
+    run_dir_env = os.environ.get("RUN_DIR")
+    if run_dir_env and any(m.strip() == "ours" for m in args.models.split(",")):
+        run_export = os.path.realpath(os.path.join(run_dir_env, "hf_format"))
+        if os.path.isfile(os.path.join(run_export, "config.json")) \
+           and os.path.realpath(_resolve_model_dir()) != run_export:
+            print(f"WARNING: 'ours' resolves to {os.path.realpath(_resolve_model_dir())}, "
+                  f"but this run's own export is {run_export} (RUN_DIR={run_dir_env}).\n"
+                  f"WSD will evaluate a model that is NOT the one this run refers to.\n"
+                  f"If intentional (re-evaluating an old model), ignore this; otherwise "
+                  f"unset MODEL_DIR or re-point it at {run_export}.",
+                  file=sys.stderr)
 
     seeds = list(range(args.seeds))
     record_run_provenance(stage="wsd", extra={"models": model_specs, "words": words, "seeds": seeds})
