@@ -280,3 +280,5 @@ notebooks/checkpoints/
 .mcp.json
 .ripgreprc
 .vscode/
+
+logs_from_cluster/
