@@ -157,6 +157,7 @@ if run_stage spacy; then
   # This used to be `cd ../spacy`, which does not exist — the directory is
   # spacy_code/. That silently killed the spaCy stage on every run.
   load_env spacy
+  check_spacy_gpu
   py_run spacy "$SPACY_DIR" \
     spacy train "$SPACY_CONFIG" \
       --paths.train corpus/train.spacy \

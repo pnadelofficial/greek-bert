@@ -74,6 +74,7 @@ fi
 echo "Output    : $SPACY_OUT"
 
 load_env spacy
+check_spacy_gpu
 
 stage "spaCy train ($SPACY_CONFIG)"
 py_run spacy "$SPACY_DIR" \

@@ -20,6 +20,23 @@
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 export PROJECT_ROOT
 
+# sbatch inherits the SUBMITTING shell's exported environment by default (no
+# script here uses --export=NONE). This repo runs TWO independent uv projects
+# from one script (root for pretrain/convert/WSD, spacy_code/ for spaCy), each
+# selected purely by `cd`-ing into it before `uv run` (see py_run() below). If
+# the submitting shell has VIRTUAL_ENV / UV_PROJECT_ENVIRONMENT / UV_PROJECT
+# set -- e.g. from a `source .venv/bin/activate` or a convenience export left
+# in .bashrc -- `uv run` can honor that override regardless of cwd:
+# UV_PROJECT_ENVIRONMENT in particular forces ALL uv projects in the shell to
+# share one .venv path, ignoring which directory you cd'd into. That silently
+# makes the spaCy stage run against the ROOT project's venv (no cupy<14, no
+# spacy-transformers) instead of spacy_code/.venv, surfacing as
+# "ValueError: Cannot use GPU, CuPy is not installed" even when a fresh manual
+# `cd spacy_code && uv run ...` test in the same shell looked fine. Strip
+# these so every stage's project selection is decided ONLY by py_run's cd,
+# never by whatever the submitting shell happened to have exported.
+unset VIRTUAL_ENV UV_PROJECT_ENVIRONMENT UV_PROJECT
+
 export SPACY_DIR="$PROJECT_ROOT/spacy_code"   # NOT "../spacy" — that path does not exist
 export DATA_DIR="$PROJECT_ROOT/data"
 export MODELS_DIR="${MODELS_DIR:-$PROJECT_ROOT/models}"
@@ -89,6 +106,33 @@ py_run() {
     uv)   (cd "$project_dir" && uv run "$@") ;;
     conda) (cd "$project_dir" && "$@") ;;
   esac
+}
+
+# Fail fast, before burning GPU allocation on `spacy train`, if cupy is not
+# importable in whatever interpreter/venv py_run actually resolves for the
+# spacy stage. Also prints exactly which interpreter/venv that is, so a
+# mismatch (e.g. uv resolving spacy_code/'s project against the wrong venv)
+# is visible directly in the SLURM log instead of requiring a manual re-check
+# after the fact.
+check_spacy_gpu() {
+  echo "Checking cupy/GPU availability in the spacy_code environment..."
+  if ! py_run spacy "$SPACY_DIR" python -c '
+import sys
+print("  interpreter :", sys.executable)
+print("  sys.prefix  :", sys.prefix)
+import cupy
+print("  cupy        :", cupy.__file__, cupy.__version__)
+print("  gpu count   :", cupy.cuda.runtime.getDeviceCount())
+'; then
+    echo "ERROR: cupy is not importable (or has no visible GPU) in the environment" >&2
+    echo "       py_run resolved above for spacy_code/. This is checked BEFORE" >&2
+    echo "       'spacy train' to avoid burning a GPU allocation on a doomed run." >&2
+    echo "       Common cause: VIRTUAL_ENV / UV_PROJECT_ENVIRONMENT / UV_PROJECT" >&2
+    echo "       inherited from the submitting shell overriding which venv uv" >&2
+    echo "       picks -- these are unset above, but double-check nothing else" >&2
+    echo "       in your shell profile re-exports them before sbatch runs." >&2
+    exit 1
+  fi
 }
 
 # ---------------------------------------------------------------------------
