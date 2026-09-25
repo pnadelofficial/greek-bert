@@ -2,6 +2,27 @@
 name = "spacy-code"
 version = "0.1.0"
 description = "Ancient Greek spaCy pipeline (parser, morphologizer, lemmatizer) fine-tuned from GreekBERT. Separate uv project: pinned to Python 3.12 + cupy<14."
+# The description above claimed a 3.12 pin, but nothing enforced it: no
+# requires-python here and no spacy_code/.python-version file. uv only climbs
+# parent directories looking for a .python-version when the CURRENT directory
+# is not itself a uv project; since spacy_code/pyproject.toml makes this its
+# own project root, uv never saw the root-level .python-version (3.13) either
+# -- it fell through to whatever default interpreter was on PATH. That default
+# can differ between an interactive login-node shell (where `uv run` was
+# tested manually) and a non-interactive sbatch batch-job shell (where
+# slurm/spacy.sh and slurm/posttrain.sh actually invoke `uv run` from
+# spacy_code/), so the batch job could silently provision a venv against a
+# Python for which the pinned cupy-cuda12x<14 wheel set behaves differently
+# (or was never actually installed against), producing
+# "ValueError: Cannot use GPU, CuPy is not installed" only under sbatch.
+# Fixed with spacy_code/.python-version (=3.12): verified locally this alone
+# makes `uv run`/`uv lock` pick CPython 3.12 instead of falling through to
+# whatever default was on PATH (3.14.6 here), with zero change to uv.lock.
+# Deliberately NOT adding requires-python here too: doing so made `uv lock`
+# report the existing checked-in lock as stale, and regenerating it on a
+# non-Linux, non-cluster machine produced an 852-line diff (mostly deletions)
+# -- not safe to commit without regenerating and reviewing it on the cluster
+# itself. The lockfile is unchanged by this fix.
 dependencies = [
     "cupy-cuda12x>=13.4,<14",
     "spacy>=3.8.16",
