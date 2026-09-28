@@ -108,6 +108,35 @@ py_run() {
   esac
 }
 
+# Confirmed root cause (2026-09-28): `import cupy.cublas` fails with
+# "ImportError: libcublas.so.12: cannot open shared object file". cupy's
+# compiled extension (cupy_backends.cuda.libs.cublas) dlopen()s libcublas.so.12
+# directly and, on cupy-cuda12x<14 (no [ctk] extra), does NOT know to look
+# inside pip-installed nvidia-*-cu12 packages -- that auto-discovery only
+# landed in the cupy major version that added the [ctk] extra. The .so is
+# almost certainly already present: torch's cu126 wheels transitively pull in
+# nvidia-cublas-cu12==12.6.4.1 (see spacy_code/uv.lock), it is just never
+# added to LD_LIBRARY_PATH. Compute those nvidia/*/lib dirs from inside
+# spacy_code's own venv once and export them so cupy's dlopen() can find them.
+setup_spacy_cuda_libs() {
+  local libs
+  libs="$(py_run spacy "$SPACY_DIR" python -c '
+import pathlib
+try:
+    import nvidia
+except ImportError:
+    raise SystemExit
+base = pathlib.Path(nvidia.__path__[0])
+print(":".join(str(p) for p in sorted(base.glob("*/lib")) if p.is_dir()))
+' 2>/dev/null)"
+  if [[ -n "$libs" ]]; then
+    export LD_LIBRARY_PATH="$libs${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+    echo "spaCy CUDA libs: added $(tr ':' '\n' <<<"$libs" | wc -l | tr -d ' ') nvidia-*-cu12 lib dir(s) to LD_LIBRARY_PATH"
+  else
+    echo "spaCy CUDA libs: no 'nvidia' pip package found in spacy_code/.venv; LD_LIBRARY_PATH left untouched" >&2
+  fi
+}
+
 # Fail fast, before burning GPU allocation on `spacy train`, if thinc's own
 # GPU-availability check (thinc.compat) would fail. This does NOT just test
 # `import cupy` -- thinc/compat.py sets has_cupy = True only if `import cupy`,
@@ -153,19 +182,20 @@ print("  thinc has_cupy_gpu :", c.has_cupy_gpu)
 print("  thinc has_gpu      :", c.has_gpu)
 '; then
     echo "ERROR: thinc cannot see a usable GPU in the spacy_code environment" >&2
-    echo "       py_run resolved above. This reproduces thinc/compat.py's own" >&2
-    echo "       check (import cupy, cupy.cublas, cupyx, then getDeviceCount())" >&2
-    echo "       BEFORE 'spacy train' runs, to avoid burning a GPU allocation" >&2
-    echo "       on a doomed run. Whichever import/line printed above last is" >&2
-    echo "       the one that failed -- if it's cupy.cublas or cupyx specifically" >&2
-    echo "       (not the top-level cupy import), this is a missing/incompatible" >&2
-    echo "       cuBLAS shared library, not a venv-selection problem: spacy_code's" >&2
-    echo "       cupy-cuda12x<14 has no [ctk] extra (unlike the root project's" >&2
-    echo "       cupy-cuda12x[ctk]>=14.2.0), so it needs cuBLAS/cuSPARSE/etc" >&2
-    echo "       discoverable via a loaded system CUDA module or via nvidia-*-cu12" >&2
-    echo "       pip packages already present in spacy_code/.venv (pulled in by" >&2
-    echo "       torch). Check 'module avail cuda' / whatever CUDA module the" >&2
-    echo "       cluster provides, and whether it needs to be loaded for this job." >&2
+    echo "       py_run resolved above, EVEN AFTER setup_spacy_cuda_libs added any" >&2
+    echo "       nvidia-*-cu12 lib dirs found in spacy_code/.venv to LD_LIBRARY_PATH" >&2
+    echo "       (see the 'spaCy CUDA libs:' line above). Whichever import/line" >&2
+    echo "       printed above last is the one that failed. If it's still" >&2
+    echo "       cupy.cublas/cupyx with 'cannot open shared object file':" >&2
+    echo "         - Check setup_spacy_cuda_libs actually found lib dirs (did it" >&2
+    echo "           print 'no nvidia pip package found'? then torch's cu126 wheel" >&2
+    echo "           set may differ from what spacy_code/uv.lock expects)." >&2
+    echo "         - The missing .so might be one setup_spacy_cuda_libs doesn't" >&2
+    echo "           cover (it only globs nvidia/*/lib -- confirm the exact missing" >&2
+    echo "           library name in the traceback above exists somewhere under" >&2
+    echo "           spacy_code/.venv/lib/python3.12/site-packages/nvidia/)." >&2
+    echo "         - Fall back to a system CUDA module: check 'module avail cuda'" >&2
+    echo "           and load a matching one in load_env's uv branch." >&2
     exit 1
   fi
 }

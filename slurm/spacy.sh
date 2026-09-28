@@ -74,6 +74,7 @@ fi
 echo "Output    : $SPACY_OUT"
 
 load_env spacy
+setup_spacy_cuda_libs
 check_spacy_gpu
 
 stage "spaCy train ($SPACY_CONFIG)"
