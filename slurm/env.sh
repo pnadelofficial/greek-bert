@@ -108,29 +108,64 @@ py_run() {
   esac
 }
 
-# Fail fast, before burning GPU allocation on `spacy train`, if cupy is not
-# importable in whatever interpreter/venv py_run actually resolves for the
-# spacy stage. Also prints exactly which interpreter/venv that is, so a
-# mismatch (e.g. uv resolving spacy_code/'s project against the wrong venv)
-# is visible directly in the SLURM log instead of requiring a manual re-check
-# after the fact.
+# Fail fast, before burning GPU allocation on `spacy train`, if thinc's own
+# GPU-availability check (thinc.compat) would fail. This does NOT just test
+# `import cupy` -- thinc/compat.py sets has_cupy = True only if `import cupy`,
+# `import cupy.cublas`, AND `import cupyx` ALL succeed, and thinc.util.require_gpu
+# raises "Cannot use GPU, CuPy is not installed" whenever has_cupy is False,
+# regardless of WHICH of the three failed. A plain `import cupy` can succeed
+# while `import cupy.cublas` fails (it dynamically loads libcublas.so at
+# import time, a different failure mode than the top-level package missing),
+# so testing only the top-level import can pass here and still hit this exact
+# error inside `spacy train`. Reproduce thinc's exact check so a failure here
+# pinpoints which specific import breaks and why.
+#
+# Also note: root pyproject.toml depends on `cupy-cuda12x[ctk]>=14.2.0` -- the
+# `ctk` extra (only on cupy>=14, confirmed via PyPI metadata) pulls in
+# pip-installable CUDA toolkit libs (cuda-toolkit[cublas,cudart,...]) so cupy
+# does not need a system CUDA module. spacy_code/pyproject.toml pins
+# `cupy-cuda12x<14` (required for spaCy/thinc compat) and that major version
+# has NO ctk extra at all, so its cuBLAS/etc. discovery depends on a system
+# CUDA module being loaded, or on auto-detecting the nvidia-*-cu12 packages
+# pulled in transitively by torch -- a plausible reason cupy.cublas
+# specifically fails to load even when the cupy package itself is installed.
 check_spacy_gpu() {
-  echo "Checking cupy/GPU availability in the spacy_code environment..."
+  echo "Checking cupy/GPU availability in the spacy_code environment (thinc's exact check)..."
   if ! py_run spacy "$SPACY_DIR" python -c '
 import sys
 print("  interpreter :", sys.executable)
 print("  sys.prefix  :", sys.prefix)
+
 import cupy
 print("  cupy        :", cupy.__file__, cupy.__version__)
+
+import cupy.cublas
+print("  cupy.cublas :", cupy.cublas.__file__)
+
+import cupyx
+print("  cupyx       :", cupyx.__file__)
+
 print("  gpu count   :", cupy.cuda.runtime.getDeviceCount())
+
+import thinc.compat as c
+print("  thinc has_cupy     :", c.has_cupy)
+print("  thinc has_cupy_gpu :", c.has_cupy_gpu)
+print("  thinc has_gpu      :", c.has_gpu)
 '; then
-    echo "ERROR: cupy is not importable (or has no visible GPU) in the environment" >&2
-    echo "       py_run resolved above for spacy_code/. This is checked BEFORE" >&2
-    echo "       'spacy train' to avoid burning a GPU allocation on a doomed run." >&2
-    echo "       Common cause: VIRTUAL_ENV / UV_PROJECT_ENVIRONMENT / UV_PROJECT" >&2
-    echo "       inherited from the submitting shell overriding which venv uv" >&2
-    echo "       picks -- these are unset above, but double-check nothing else" >&2
-    echo "       in your shell profile re-exports them before sbatch runs." >&2
+    echo "ERROR: thinc cannot see a usable GPU in the spacy_code environment" >&2
+    echo "       py_run resolved above. This reproduces thinc/compat.py's own" >&2
+    echo "       check (import cupy, cupy.cublas, cupyx, then getDeviceCount())" >&2
+    echo "       BEFORE 'spacy train' runs, to avoid burning a GPU allocation" >&2
+    echo "       on a doomed run. Whichever import/line printed above last is" >&2
+    echo "       the one that failed -- if it's cupy.cublas or cupyx specifically" >&2
+    echo "       (not the top-level cupy import), this is a missing/incompatible" >&2
+    echo "       cuBLAS shared library, not a venv-selection problem: spacy_code's" >&2
+    echo "       cupy-cuda12x<14 has no [ctk] extra (unlike the root project's" >&2
+    echo "       cupy-cuda12x[ctk]>=14.2.0), so it needs cuBLAS/cuSPARSE/etc" >&2
+    echo "       discoverable via a loaded system CUDA module or via nvidia-*-cu12" >&2
+    echo "       pip packages already present in spacy_code/.venv (pulled in by" >&2
+    echo "       torch). Check 'module avail cuda' / whatever CUDA module the" >&2
+    echo "       cluster provides, and whether it needs to be loaded for this job." >&2
     exit 1
   fi
 }
