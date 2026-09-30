@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Dict, List, Literal, Optional, Union, Iterable
 from typing_extensions import TypedDict, NotRequired
 
+import spacy
 from spacy.language import Language
 from spacy.pipeline import Pipe
 from spacy.pipeline.lemmatizer import lemmatizer_score
@@ -270,3 +271,44 @@ class FrequencyLemmatizer(Pipe):
             lookup = None
         self.initialize(table=table, lookup=lookup)
         return self
+
+
+# =============================================================================
+# NOT from odyCy -- added so `spacy train`'s init step actually feeds this
+# component real data. FrequencyLemmatizer.initialize() takes table/lookup
+# dicts, but nothing in the ported code above ever builds or supplies them:
+# left as-is, [initialize.components.frequency_lemmatizer] resolves to
+# table=None, lookup=None, and lemmatize() always short-circuits to backoff()
+# -- i.e. the lexicon layer is a silent no-op. These two @misc functions let
+# the config load real data (built by build_lemma_lexicon.py) at init time:
+#
+#   [initialize.components.frequency_lemmatizer]
+#   table = {"@misc":"greekbert.lemma_table.v1"}
+#   lookup = {"@misc":"greekbert.lemma_lookup.v1"}
+#
+# This file is already loaded via `--code custom_components/lemmatizer.py` in
+# every spacy train/evaluate invocation that uses gpu_default_freq_lemma.cfg,
+# so no further wiring is needed for the registry to be visible.
+# =============================================================================
+
+LEXICON_DIR = Path(__file__).resolve().parent.parent / "assets" / "lemmas"
+
+
+def _load_lexicon_json(name: str) -> Dict:
+    path = LEXICON_DIR / name
+    if not path.is_file():
+        raise FileNotFoundError(
+            f"{path} does not exist. Build it first (from spacy_code/): "
+            f"uv run python build_lemma_lexicon.py"
+        )
+    return read_json(str(path))
+
+
+@spacy.registry.misc("greekbert.lemma_table.v1")
+def load_lemma_table() -> FrequencyTable:
+    return _load_lexicon_json("table.json")
+
+
+@spacy.registry.misc("greekbert.lemma_lookup.v1")
+def load_lemma_lookup() -> LookupTable:
+    return _load_lexicon_json("lookup.json")

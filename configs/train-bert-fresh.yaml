@@ -27,8 +27,8 @@
 # comparison is answerable and you can stop early.
 # =============================================================================
 
-lr: 2e-4
-max_lr: 2e-4
+lr: 1e-4
+max_lr: 14Be-4
 pct_start: 0.05
 mask_prob: 0.30
 
