@@ -103,7 +103,17 @@ TARGET_WORDS = {
 
 # The comparison model. Resolved locally so an offline cluster run does not fail
 # on a hub lookup for "Jacobo/aristoBERTo"; override with --baseline <path>.
-DEFAULT_BASELINE = str(repo_path("models", "external-aristoBERTo"))
+#
+# 2026-10: models/external-aristoBERTo (the old path) turned out to be
+# GreekBERT (modern Greek), not aristoBERTo -- the same identity confusion
+# documented in configs/train.yaml's IDENTITY CORRECTION note, independently
+# confirmed by actually diffing the downloaded config.json. Every WSD row in
+# results/table.md labeled "external-aristoBERTo" was therefore scored against
+# GreekBERT, not real aristoBERTo. Re-downloaded correctly as
+# models/external-aristoberto-real; point DEFAULT_BASELINE at that until the
+# old mislabeled directory is deleted (keeping it around, and the "-real"
+# suffix, deliberately -- this mistake happened twice under the clean name).
+DEFAULT_BASELINE = str(repo_path("models", "external-aristoberto-real"))
 
 
 # config

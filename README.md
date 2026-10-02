@@ -191,7 +191,10 @@ Historical change notes from that work are in `docs/archive/`.
 
 Pulled into `models/` for comparison (gitignored):
 
-- `models/external-aristoBERTo` — Jacobo's aristoBERTo
+- `models/external-aristoberto-real` — Jacobo's aristoBERTo (ancient Greek). NOT
+  `models/external-aristoBERTo` (no suffix) -- that directory turned out to be
+  GreekBERT (modern Greek) under a misleading name; see `configs/train.yaml`'s
+  IDENTITY CORRECTION note and `wsd/wsd.py`'s `DEFAULT_BASELINE` comment.
 - `models/external-shlm-grc-en` — `kevinkrahn/shlm-grc-en` (bilingual GRC↔EN sentence encoder)
 - `models/greekbert-jan20` — Jan-20 export (base for the SBERT run)
 - `models/greekbert-2025-09-18` — Sep-18 export (was `hf_format918`)

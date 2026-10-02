@@ -5,11 +5,41 @@
 # Relative paths here resolve against THIS FILE's directory, so this config
 # works from any cwd. Per-run paths are injected by slurm/env.sh via
 # CHECKPOINT_DIR / TENSORBOARD_DIR / HF_EXPORT_DIR and win over the values below.
+#
+# IDENTITY CORRECTION (2026-10): the `pretrained_model` default below,
+# nlpaueb/bert-base-greek-uncased-v1, is GreekBERT -- a MODERN Greek BERT
+# (trained on Greek Wikipedia/Europarl/OSCAR). It is NOT aristoBERTo. It is
+# aristoBERTo's own starting point: aristoBERTo's model card says it
+# "initialized the pre-training with weights from GreekBERT... continued the
+# pre-training with an ancient Greek corpus." A docs/AUDIT-2026-07.md claim
+# that these were the same checkpoint (based on aristoBERTo's exported
+# config.json still carrying GreekBERT's hub id in `_name_or_path`, a cosmetic
+# leftover its authors never updated) was wrong, and that error is baked into
+# this file's default. It was NOT corrected here because the run already
+# completed under this exact default (RUN_NAME=arm1-aristo-continuation,
+# best_val_loss 1.58) and is being kept as "model 1" of the final 4-model
+# comparison: GreekBERT fine-tuned directly on the new corpus. This is a real,
+# distinct, intentional comparison point -- just not aristoBERTo continuation.
+#
+# For the REAL aristoBERTo continuation ("model 2"), override at launch
+# instead of editing this default -- same recipe, different checkpoint:
+#   RUN_NAME=model2-aristo-continuation \
+#     PRETRAINED_MODEL=../models/external-aristoberto-real \
+#     TOKENIZED_DATASET_PATH=data/nlpaueb_tokenized_open_greek_dataset_v2 \
+#     CONFIG_PATH=configs/train.yaml sbatch slurm/pretrain.sh
+# models/external-aristoBERTo (no suffix) was CONFIRMED to be the same
+# GreekBERT mixup as this file's default -- it is NOT aristoBERTo. The real
+# one was re-downloaded as models/external-aristoberto-real; use that path
+# (and see wsd/wsd.py's DEFAULT_BASELINE, fixed the same way -- every WSD
+# baseline row in results/table.md recorded before this fix was scored
+# against GreekBERT, not aristoBERTo).
+# See docs/EXPERIMENTS-2X2.md for the full 4-model plan.
 # =============================================================================
 
 # --- Learning rate schedule --------------------------------------------------
 # RoBERTa's 6e-4 was tuned for an 8k-sequence batch on a FROM-SCRATCH model.
-# This run CONTINUES a converged aristoBERTo at effective batch 128, where 6e-4
+# This run CONTINUES a converged GreekBERT (see the IDENTITY CORRECTION note
+# above -- not aristoBERTo) at effective batch 128, where 6e-4
 # is far too hot (audit item 4); the epoch-20 curve was still descending
 # monotonically, consistent with an LR that overshoots. 2e-4 is the upper end
 # of the audit's recommended 1e-4-2e-4 band for continued pretraining.
@@ -47,8 +77,15 @@ weight_decay: 0.01
 use_mixed_precision: true
 
 # --- Model and data ----------------------------------------------------------
+# GreekBERT (modern Greek) -- see the IDENTITY CORRECTION note at the top of
+# this file. For the real aristoBERTo continuation, override PRETRAINED_MODEL
+# at launch; do not edit this default (model 1's completed run depends on it).
 pretrained_model: "nlpaueb/bert-base-greek-uncased-v1"
-tokenized_dataset_path: "../data/nlpaueb_tokenized_open_greek_dataset"
+# v2 = the corpus actually used for model 1's completed run (launched with
+# TOKENIZED_DATASET_PATH=data/nlpaueb_tokenized_open_greek_dataset_v2, which
+# overrides this default). Kept in sync here so a bare run without that
+# override uses the same corpus, not the stale pre-v2 path.
+tokenized_dataset_path: "../data/nlpaueb_tokenized_open_greek_dataset_v2"
 
 # --- Logging, checkpoints, export -------------------------------------------
 # Defaults for running by hand (paths are relative to THIS file).
