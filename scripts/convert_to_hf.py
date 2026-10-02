@@ -16,6 +16,7 @@ which for a not-yet-converged run is not necessarily the best one.
 """
 
 import argparse
+import json
 from pathlib import Path
 
 import torch
@@ -177,6 +178,27 @@ def main():
     Path(output_dir).mkdir(parents=True, exist_ok=True)
     model.save_pretrained(output_dir)
     tokenizer.save_pretrained(output_dir)
+
+    # This project pins TWO transformers versions: root (pretrain/convert/WSD)
+    # is on transformers>=5.17.0, spacy_code/ is pinned to transformers==4.53.2
+    # (required by spacy-transformers). transformers 5's tokenizer save path
+    # writes tokenizer_config.json's "tokenizer_class" as "TokenizersBackend" --
+    # a class that only exists in transformers 5's internal tokenizer refactor.
+    # transformers 4.x's AutoTokenizer cannot resolve that class name at all and
+    # fails with "Tokenizer class TokenizersBackend does not exist or is not
+    # currently imported" the moment spacy_transformers tries to load this
+    # export. Force it back to "PreTrainedTokenizerFast" -- the generic fast-
+    # tokenizer class both transformers versions understand, and the correct
+    # one here since nothing in this repo relies on a model-specific tokenizer
+    # subclass (everything is tokenizer.json-driven).
+    tok_cfg_path = Path(output_dir) / "tokenizer_config.json"
+    if tok_cfg_path.is_file():
+        tok_cfg = json.loads(tok_cfg_path.read_text())
+        if tok_cfg.get("tokenizer_class") != "PreTrainedTokenizerFast":
+            print(f"Rewriting tokenizer_class: {tok_cfg.get('tokenizer_class')!r} "
+                  f"-> 'PreTrainedTokenizerFast' (transformers 4.x/spaCy compat)")
+            tok_cfg["tokenizer_class"] = "PreTrainedTokenizerFast"
+            tok_cfg_path.write_text(json.dumps(tok_cfg, indent=2))
 
     # Round-trip check: the thing we just wrote must reload and still agree with
     # the tokenizer. Catches a save that produced an unloadable directory.
