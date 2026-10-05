@@ -62,24 +62,28 @@ print(f'Cached {len(ds)} Greek Wikipedia articles')
 "
 stage_done "Greek Wikipedia cached -> data/wikidata_cache/"
 
-# --- mC4 Greek connectivity smoke-test (stage 1: modern Greek, OSCAR stand-in) ---
-# NOT fully downloaded here -- prepare_data.py's --include-mc4 streams it with
-# a byte cap at tokenize time (mC4's Greek config is far larger than needed).
-# This just confirms the stream is reachable from THIS node/partition before
-# you find out the hard way during a multi-hour tokenization job.
-stage "mC4 Greek connectivity check (legacy-datasets/mc4, config 'el')"
+# --- FineWeb2 Greek connectivity smoke-test (stage 1: modern Greek, OSCAR stand-in) ---
+# NOT fully downloaded here -- prepare_data.py's --include-fineweb2 streams it
+# with a byte cap at tokenize time (FineWeb2's Greek config is far larger than
+# needed). This just confirms the stream is reachable from THIS node/partition
+# before you find out the hard way during a multi-hour tokenization job.
+# (Originally used Greek mC4 here, but legacy-datasets/mc4 requires the old
+# Python-script dataset-loading mechanism, which `datasets` has removed
+# outright -- "Dataset scripts are no longer supported". FineWeb2 is natively
+# Parquet, no script involved, and not gated.)
+stage "FineWeb2 Greek connectivity check (HuggingFaceFW/fineweb-2, config 'ell_Grek')"
 py_run pretrain "$PROJECT_ROOT" python -c "
 from datasets import load_dataset
-ds = load_dataset('legacy-datasets/mc4', 'el', split='train', streaming=True, trust_remote_code=True)
+ds = load_dataset('HuggingFaceFW/fineweb-2', name='ell_Grek', split='train', streaming=True)
 row = next(iter(ds))
-print('mC4 stream OK, first doc has', len(row.get('text') or ''), 'chars')
+print('FineWeb2 stream OK, first doc has', len(row.get('text') or ''), 'chars')
 "
-stage_done "mC4 Greek reachable"
+stage_done "FineWeb2 Greek reachable"
 
 echo ""
 echo "All external corpora ready. Next:"
 echo "  python scripts/prepare_data.py --exclude-open-greek --exclude-europarl \\"
-echo "      --include-wikidata --include-mc4 \\"
+echo "      --include-wikidata --include-fineweb2 \\"
 echo "      --tokenizer tokenizers/modernbert-greek-tokenizer-v2 \\"
 echo "      --out data/modernbert_stage1_modern_greek"
 echo "  python scripts/prepare_data.py --exclude-open-greek --exclude-europarl \\"

@@ -24,7 +24,7 @@
 #
 #   # Stage 1 -- fresh ModernBERT on modern Greek (built by
 #   # slurm/fetch_external_corpora.sh + scripts/prepare_data.py --include-wikidata
-#   # --include-mc4 --exclude-open-greek --exclude-europarl):
+#   # --include-fineweb2 --exclude-open-greek --exclude-europarl):
 #   RUN_NAME=modernbert-stage1-modern \
 #     TOKENIZED_DATASET_PATH=data/modernbert_stage1_modern_greek \
 #     CONFIG_PATH=configs/train-modernbert-fast.yaml sbatch slurm/pretrain.sh

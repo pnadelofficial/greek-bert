@@ -184,7 +184,7 @@ Pipeline:
 sbatch slurm/fetch_external_corpora.sh    # First1KGreek clone, Wikipedia cache, mC4 connectivity check
 
 python scripts/prepare_data.py --exclude-open-greek --exclude-europarl \
-    --include-wikidata --include-mc4 \
+    --include-wikidata --include-fineweb2 \
     --tokenizer tokenizers/modernbert-greek-tokenizer-v2 \
     --out data/modernbert_stage1_modern_greek
 

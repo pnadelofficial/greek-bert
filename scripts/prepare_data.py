@@ -53,7 +53,7 @@ Usage (submit from the project root, same as the SLURM stages):
   # ModernBERT two-stage comparison (docs/EXPERIMENTS-2X2.md, model 5):
   # stage 1 -- modern Greek only (GreekBERT-equivalent corpus)
   python scripts/prepare_data.py --exclude-open-greek --exclude-europarl \
-      --include-wikidata --include-mc4 \
+      --include-wikidata --include-fineweb2 \
       --tokenizer tokenizers/modernbert-greek-tokenizer-v2 \
       --out data/modernbert_stage1_modern_greek
   # (Europarl is excluded above only because it's folded in separately if
@@ -75,8 +75,8 @@ The raw inputs must live under data/:
   data/wikidata_cache/                  (only with --include-wikidata)
   data/first1kgreek/                    (only with --include-first1k; populated by
                                          slurm/fetch_external_corpora.sh)
-  (mC4 Greek, --include-mc4, streams from the HF Hub / its local cache --
-   nothing needs to pre-exist under data/ for it specifically)
+  (FineWeb2 Greek, --include-fineweb2, streams from the HF Hub / its local
+   cache -- nothing needs to pre-exist under data/ for it specifically)
 Output is a HuggingFace ``DatasetDict`` with train/test splits, saved with
 ``save_to_disk`` (the format train.py loads).
 """
@@ -124,16 +124,21 @@ def parse_args() -> argparse.Namespace:
                         "Greek). For building a corpus for a DIFFERENT stage of the "
                         "ModernBERT two-stage comparison (docs/EXPERIMENTS-2X2.md) "
                         "that should not contain this project's own new corpus.")
-    p.add_argument("--include-mc4", action="store_true",
-                   help="Include Greek mC4 (legacy-datasets/mc4, config 'el') -- a "
-                        "large web-crawl-based modern Greek corpus, standing in for "
-                        "OSCAR (GreekBERT's own source), which is gated/suspended as "
-                        "of 2026-10. Streamed and capped at --mc4-max-bytes, not "
-                        "downloaded in full.")
-    p.add_argument("--mc4-max-bytes", type=int, default=15 * 1024**3,
-                   help="Cap on mC4 text pulled (default 15 GB). mC4 is enormous; "
-                        "this is 'a large modern Greek foundation,' not a faithful "
-                        "full reproduction of OSCAR's size.")
+    p.add_argument("--include-fineweb2", action="store_true",
+                   help="Include Greek FineWeb2 (HuggingFaceFW/fineweb-2, config "
+                        "'ell_Grek') -- a large, filtered/deduplicated web-crawl-based "
+                        "modern Greek corpus, standing in for OSCAR (GreekBERT's own "
+                        "source, gated/suspended as of 2026-10). Greek mC4 was tried "
+                        "first but legacy-datasets/mc4 requires the old Python-script "
+                        "dataset-loading mechanism, which `datasets` has removed "
+                        "outright ('Dataset scripts are no longer supported') -- not "
+                        "fixable by trust_remote_code or by downgrading `datasets`. "
+                        "FineWeb2 is natively Parquet, no script involved. Streamed "
+                        "and capped at --fineweb2-max-bytes, not downloaded in full.")
+    p.add_argument("--fineweb2-max-bytes", type=int, default=15 * 1024**3,
+                   help="Cap on FineWeb2 text pulled (default 15 GB). FineWeb2 is "
+                        "enormous; this is 'a large modern Greek foundation,' not a "
+                        "faithful full reproduction of OSCAR's size.")
     p.add_argument("--include-first1k", action="store_true",
                    help="Include First1KGreek (data/first1kgreek/, populated by "
                         "slurm/fetch_external_corpora.sh) -- a public Ancient Greek "
@@ -215,29 +220,37 @@ def load_wikipedia(data_dir: Path) -> dict[str, str]:
     return docs
 
 
-def load_mc4(data_dir: Path, max_bytes: int) -> dict[str, str]:
-    """Greek mC4 (legacy-datasets/mc4, config 'el'), streamed and capped.
+def load_fineweb2(data_dir: Path, max_bytes: int) -> dict[str, str]:
+    """Greek FineWeb2 (HuggingFaceFW/fineweb-2, config 'ell_Grek'), streamed
+    and capped.
 
     Standing in for OSCAR (GreekBERT's own modern-Greek web-crawl source),
-    which is gated/access-suspended as of 2026-10. mC4 is itself a
-    deduplicated, cleaned Common Crawl derivative, same role as OSCAR, and is
-    NOT gated. Streamed (not downloaded in full -- mC4's Greek config alone is
-    far larger than needed here) and capped at `max_bytes` of raw text.
+    which is gated/access-suspended as of 2026-10. Originally tried Greek mC4
+    (legacy-datasets/mc4) as the substitute, but that repo requires the old
+    Python-script dataset-loading mechanism ("mc4.py"), which `datasets`
+    removed outright in recent versions ("Dataset scripts are no longer
+    supported") -- not a gating issue, not fixable by trust_remote_code or by
+    downgrading `datasets` (which would risk breaking everything else that
+    depends on the pinned version). FineWeb2 is natively Parquet
+    (data/ell_Grek/train/*.parquet on the Hub, confirmed via the Hub API --
+    no loading script at all) and is generally higher quality than raw mC4
+    (heavily filtered and deduplicated). Not gated. Streamed (not downloaded
+    in full) and capped at `max_bytes` of raw text.
     """
     from datasets import load_dataset
 
     try:
-        mc4 = load_dataset("legacy-datasets/mc4", "el", split="train", streaming=True,
-                           cache_dir=str(data_dir / "mc4_cache"), trust_remote_code=True)
+        fw2 = load_dataset("HuggingFaceFW/fineweb-2", name="ell_Grek", split="train",
+                           streaming=True, cache_dir=str(data_dir / "fineweb2_cache"))
     except Exception as e:  # offline cluster: pre-fetch via slurm/fetch_external_corpora.sh
-        raise SystemExit(f"--include-mc4 failed to load mC4: {e}")
+        raise SystemExit(f"--include-fineweb2 failed to load FineWeb2: {e}")
     docs: dict[str, str] = {}
     total_bytes = 0
-    for i, row in enumerate(mc4):
+    for i, row in enumerate(fw2):
         text = (row.get("text") or "").strip()
         if not text:
             continue
-        docs[f"mc4#{i}"] = text
+        docs[f"fineweb2#{i}"] = text
         total_bytes += len(text.encode("utf-8"))
         if total_bytes >= max_bytes:
             break
@@ -330,8 +343,8 @@ def main() -> int:
         docs.update(load_europarl(data_dir))
     if args.include_wikidata:
         docs.update(load_wikipedia(data_dir))
-    if args.include_mc4:
-        docs.update(load_mc4(data_dir, args.mc4_max_bytes))
+    if args.include_fineweb2:
+        docs.update(load_fineweb2(data_dir, args.fineweb2_max_bytes))
     if args.include_first1k:
         docs.update(load_first1k(data_dir))
     if not docs:
@@ -419,7 +432,7 @@ def main() -> int:
             "include_wikidata": args.include_wikidata,
             "exclude_europarl": args.exclude_europarl,
             "exclude_open_greek": args.exclude_open_greek,
-            "include_mc4": args.include_mc4,
+            "include_fineweb2": args.include_fineweb2,
             "include_first1k": args.include_first1k,
             "tokenizer": args.tokenizer,
             "note": ("Document-level split: a document never appears in both "
