@@ -11,16 +11,32 @@ build an Ancient Greek BERT": (1) fresh ModernBERT on new data, (2) continue
 real aristoBERTo on new data, (3) continue GreekBERT directly on new data. The
 grid is now: those three candidates, plus one random-init control that makes
 the "does prior knowledge help" question answerable instead of just reporting
-a leaderboard. A fifth model (ModernBERT put through aristoBERTo's own
-two-stage history) was scoped and **deferred** -- see "Deferred: model 5" at
-the bottom.
+a leaderboard.
+
+**2026-10 update:** a fifth model was proposed, scoped, and is now active (no
+longer deferred) -- see "Model 5" below the table. It gives model 2 a true
+architecture-matched counterpart by putting ModernBERT through the same
+training-history SHAPE as real aristoBERTo (modern Greek -> ancient Greek ->
+this project's new corpus), instead of comparing model 2 against model 4's
+single-stage history. Initially this looked blocked on missing data
+(aristoBERTo's own ~900MB ancient-Greek scrape was never published), but (a)
+aristoBERTo's paper (Singh et al. 2021) names its actual sources well enough
+to approximate, and (b) this project's own corpus (`data/*.parquet`) turned
+out to be Harvard institutional-books-derived, not Perseus/First1KGreek-
+derived, so there's no overlap concern with the reconstructed ancient-Greek
+stage either. See "Model 5" for the real plan.
 
 | Model | What it is | Architecture | Tokenizer | Weights | Config | Corpus | RUN_NAME | Status |
 |---|---|---|---|---|---|---|---|---|
 | 1 | GreekBERT fine-tuned on new data | BERT-base | nlpaueb 35k WP | GreekBERT continued | `configs/train.yaml` (default) | `nlpaueb_tokenized_open_greek_dataset_v2` | `arm1-aristo-continuation` | done |
-| 2 | aristoBERTo fine-tuned on new data | BERT-base | nlpaueb 35k WP | real aristoBERTo continued | `configs/train.yaml` + `PRETRAINED_MODEL=../models/external-aristoberto-real` | same as model 1 | `model2-aristo-continuation` | **not yet run** |
+| 2 | aristoBERTo fine-tuned on new data | BERT-base | nlpaueb 35k WP | real aristoBERTo continued | `configs/train.yaml` + `PRETRAINED_MODEL=../models/external-aristoberto-real` | same as model 1 | `model2-aristo-continuation` | done |
 | 3 | Fresh BERT on new data (control) | BERT-base | nlpaueb 35k WP | random | `configs/train-bert-fresh.yaml` | same as model 1 | `arm2-bert-fresh` | done |
 | 4 | Fresh ModernBERT on new data | ModernBERT | Greek 50k BPE | random | `configs/train-modernbert.yaml` | `greekbpe_tokenized_open_greek_dataset_v2` | `arm4-modernbert-scratch` | done |
+| 5 | ModernBERT through aristoBERTo's own 2-stage history, then new data | ModernBERT | Greek 50k BPE | modern Greek -> First1KGreek -> new data | `configs/train-modernbert-fast.yaml` (3 launches) | see "Model 5" below | `modernbert-stage{1,2,3}-*` | **in progress** |
+
+Note: models 1/3/4's WSD numbers predate the aristoBERTo-baseline identity
+fix and need rerunning (`STAGES=wsd`) -- see `wsd/wsd.py`'s `DEFAULT_BASELINE`
+comment and `results/model-comparison.md`.
 
 Reading the table:
 - **(1) vs (2)** -- does fine-tuning the *actual* ancient-Greek-adapted
@@ -133,20 +149,67 @@ double-encoded vocab, see git history for the full diagnosis). Fixed by
 `slurm/prepare_bpe_corpus.sh` already point at v2. Nothing further needed
 here unless the tokenizer itself needs retraining.
 
-## Deferred: model 5 (ModernBERT through aristoBERTo's own two-stage history)
+## Model 5 (ModernBERT through aristoBERTo's own two-stage history)
 
-The original ask: a ModernBERT counterpart that goes through the same
-two-stage history as real aristoBERTo -- pretrain from scratch on GreekBERT's
-own modern-Greek corpus (~30GB: Greek Wikipedia + Europarl Greek + OSCAR
-Greek, all public), then continue on the existing ancient-Greek corpus, same
-as model 2 does to real aristoBERTo. Not doable as a config change: aristoBERTo's
-own ancient-Greek scrape (~900MB) was never published, and the modern-Greek
-corpus-assembly pipeline doesn't exist in this repo yet. Reusing real
-aristoBERTo's *weights* as a shortcut doesn't work either -- different
-architecture (BERT vs ModernBERT) and different vocab (35k WordPiece vs 50k
-BPE) mean nothing transfers directly. A faithful version requires: (a) a new
-modern-Greek corpus-assembly pipeline (download + clean + dedup Wikipedia /
-Europarl / OSCAR), (b) a full from-scratch ModernBERT pretrain on it
-(~model-4 cost), (c) a continuation run on the existing corpus (~model-1/2
-cost). Scoped, understood, deliberately out of scope for the current paper
-pass -- revisit later if there's appetite for it.
+A ModernBERT counterpart that goes through the same training-history SHAPE as
+real aristoBERTo -- pretrain from scratch on a modern-Greek corpus, continue
+on an ancient-Greek corpus, then continue on this project's own new corpus
+(the same final stage model 2 goes through). This holds training HISTORY
+constant between models 2 and 5, so the architecture comparison isn't
+confounded by model 2 having a 3-stage history vs. model 4's 1-stage history.
+
+**Not a byte-identical reproduction of aristoBERTo's own training** --
+aristoBERTo's ~900MB ancient-Greek scrape was never published and can't be
+reconstructed exactly. What's used instead, per aristoBERTo's own paper
+(Singh et al. 2021), which names its actual sources:
+- **Stage 1 (modern Greek):** Greek Wikipedia + Greek mC4 (standing in for
+  OSCAR, which is gated/access-suspended as of 2026-10; both are
+  deduplicated Common-Crawl derivatives serving the same role) +
+  `data/europarl_el/` if included. NOT this project's own corpus.
+- **Stage 2 (ancient Greek):** First1KGreek alone (skipping Perseus/treebank
+  reconstruction for speed -- First1KGreek alone is a large, public, genuine
+  ancient-Greek corpus and gets the comparison most of the way there).
+  Confirmed to have no overlap with this project's own corpus (Harvard
+  institutional-books-derived, not Perseus/First1KGreek-derived).
+- **Stage 3:** this project's own new corpus -- identical to model 2's final
+  stage, which is the actual comparison point.
+
+Same `lr=2e-4` recipe as model 4 throughout (proven stable from random init
+for ModernBERT specifically; BERT-base needed a lower LR from random init,
+ModernBERT didn't). `batch_size` bumped to 48/GPU for B200 throughput --
+unvalidated at this size for ModernBERT, watch early steps for OOM.
+
+Pipeline:
+```bash
+sbatch slurm/fetch_external_corpora.sh    # First1KGreek clone, Wikipedia cache, mC4 connectivity check
+
+python scripts/prepare_data.py --exclude-open-greek --exclude-europarl \
+    --include-wikidata --include-mc4 \
+    --tokenizer tokenizers/modernbert-greek-tokenizer-v2 \
+    --out data/modernbert_stage1_modern_greek
+
+python scripts/prepare_data.py --exclude-open-greek --exclude-europarl \
+    --include-first1k \
+    --tokenizer tokenizers/modernbert-greek-tokenizer-v2 \
+    --out data/modernbert_stage2_ancient_greek
+
+# Stage 1
+RUN_NAME=modernbert-stage1-modern \
+  TOKENIZED_DATASET_PATH=data/modernbert_stage1_modern_greek \
+  CONFIG_PATH=configs/train-modernbert-fast.yaml sbatch slurm/pretrain.sh
+
+# Stage 2 (after stage 1 finishes)
+RUN_NAME=modernbert-stage2-ancient \
+  PRETRAINED_MODEL=runs/modernbert-stage1-modern/hf_format \
+  TOKENIZED_DATASET_PATH=data/modernbert_stage2_ancient_greek \
+  CONFIG_PATH=configs/train-modernbert-fast.yaml sbatch slurm/pretrain.sh
+
+# Stage 3 (after stage 2 finishes) -- this is "model 5"
+RUN_NAME=modernbert-stage3-final \
+  PRETRAINED_MODEL=runs/modernbert-stage2-ancient/hf_format \
+  TOKENIZED_DATASET_PATH=data/greekbpe_tokenized_open_greek_dataset_v2 \
+  CONFIG_PATH=configs/train-modernbert-fast.yaml sbatch slurm/pretrain.sh
+
+# Then the usual downstream pipeline on the stage-3 run:
+RUN_NAME=modernbert-stage3-final sbatch slurm/posttrain.sh
+```

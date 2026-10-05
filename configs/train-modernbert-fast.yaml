@@ -1,0 +1,81 @@
+# =============================================================================
+# ModernBERT pretraining — model 5's three stages (docs/EXPERIMENTS-2X2.md):
+# a ModernBERT counterpart that goes through the same training-history shape
+# as real aristoBERTo (modern Greek -> ancient Greek -> this project's new
+# corpus), so the architecture comparison against model 2 holds training
+# history constant and isolates architecture, not budget.
+#
+# Same hyperparameters as configs/train-modernbert.yaml (model 4's config,
+# proven stable from random init with NO divergence at lr=2e-4 -- unlike
+# BERT-base, which needed a lower LR from random init; see
+# docs/EXPERIMENTS-2X2.md's "Random-init LR postmortem"). The only change
+# here is batch_size, bumped for B200 throughput -- UNVALIDATED at this size
+# for ModernBERT specifically (model 4 only ran at batch_size=16/GPU). Watch
+# the first few logged steps for an OOM; back off if it happens. Rough
+# justification: H200 (141GB) fits BERT-base MLM@512 at 128-256/GPU (audit
+# Tier 3); ModernBERT-base is ~2.5x BERT-base's cost (22 layers, 768 hidden,
+# gated MLP) => ~50-100/GPU on H200. B200 (192GB, ~1.36x H200) => this 48 is
+# deliberately conservative, not a tuned ceiling -- raise it if it clears
+# comfortably.
+#
+# One file, reused for all three stages via env overrides at launch (same
+# pattern as model 2 / the old arm 3): only PRETRAINED_MODEL and
+# TOKENIZED_DATASET_PATH change between stages.
+#
+#   # Stage 1 -- fresh ModernBERT on modern Greek (built by
+#   # slurm/fetch_external_corpora.sh + scripts/prepare_data.py --include-wikidata
+#   # --include-mc4 --exclude-open-greek --exclude-europarl):
+#   RUN_NAME=modernbert-stage1-modern \
+#     TOKENIZED_DATASET_PATH=data/modernbert_stage1_modern_greek \
+#     CONFIG_PATH=configs/train-modernbert-fast.yaml sbatch slurm/pretrain.sh
+#
+#   # Stage 2 -- continue stage 1 on First1KGreek (ancient Greek; built with
+#   # --include-first1k --exclude-open-greek --exclude-europarl):
+#   RUN_NAME=modernbert-stage2-ancient \
+#     PRETRAINED_MODEL=runs/modernbert-stage1-modern/hf_format \
+#     TOKENIZED_DATASET_PATH=data/modernbert_stage2_ancient_greek \
+#     CONFIG_PATH=configs/train-modernbert-fast.yaml sbatch slurm/pretrain.sh
+#
+#   # Stage 3 -- continue stage 2 on THIS project's own corpus (the actual
+#   # comparison point against model 2 -- same final-stage corpus as models 1/2):
+#   RUN_NAME=modernbert-stage3-final \
+#     PRETRAINED_MODEL=runs/modernbert-stage2-ancient/hf_format \
+#     TOKENIZED_DATASET_PATH=data/greekbpe_tokenized_open_greek_dataset_v2 \
+#     CONFIG_PATH=configs/train-modernbert-fast.yaml sbatch slurm/pretrain.sh
+#
+# Stage 2 and 3 are CONTINUATIONS of a now-warm checkpoint (not random init),
+# same as models 1/2 -- no evidence they need a different LR than this.
+# =============================================================================
+
+lr: 2e-4
+max_lr: 2e-4
+pct_start: 0.05
+mask_prob: 0.30
+
+# Bumped from configs/train-modernbert.yaml's 16 -- see the throughput note
+# above. Effective batch = 48 x 8 GPUs x 1 = 384 (vs. 128 for all other runs
+# in this project so far). num_epochs is unchanged: an "epoch" is one pass
+# over the tokenized dataset regardless of batch size, so total TOKEN budget
+# per stage matches the rest of the project -- this only changes step count
+# and per-step wall-clock, not how much data the model sees.
+batch_size: 48
+num_epochs: 40
+gradient_accumulation_steps: 1
+
+weight_decay: 0.01
+use_mixed_precision: true   # bf16 (TrainingConfig.bf16 default)
+
+# Stage 1 default (fresh init). Stages 2/3 override pretrained_model via
+# PRETRAINED_MODEL at launch (see header) -- when set, model_config/tokenizer
+# are read from that checkpoint instead of the two lines below.
+pretrained_model: null
+model_config: "answerdotai/ModernBERT-base"
+tokenizer: "tokenizers/modernbert-greek-tokenizer-v2"
+
+# Stage 1 default corpus. Stage 2/3 override via TOKENIZED_DATASET_PATH.
+tokenized_dataset_path: "../data/modernbert_stage1_modern_greek"
+
+log_interval: 100
+checkpoint_dir: "../scripts/checkpoints"
+tensorboard_dir: "../scripts/runs"
+output_dir: "../models/ManualExport"

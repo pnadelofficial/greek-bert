@@ -1,34 +1,29 @@
 # =============================================================================
-# GreekBERT pretraining — ARM 3 of the 2x2 comparison (docs/EXPERIMENTS-2X2.md)
+# GreekBERT pretraining — model 4 of the 4-model comparison (docs/EXPERIMENTS-2X2.md)
 #
-#   ModernBERT trunk (random-init arm 4 / warm-start note below)
-#   + 50k cased Greek BPE (tokenizers/modernbert-greek-tokenizer)
+#   Fresh ModernBERT (random init) + 50k cased Greek BPE
+#   (tokenizers/modernbert-greek-tokenizer-v2)
 #
-# Same RoBERTa-style recipe as configs/train.yaml (arm 1) so the two arms
-# differ ONLY in architecture+tokenizer:
-#   mask_prob 0.30 (dynamic 80/10/10 + special-token guard)
-#   lr 2e-4 (continued/warm-start regime; see train.yaml for the rationale)
-#   AdamW betas (0.9, 0.98), bf16, best-checkpoint by all-reduced val loss
+# mask_prob 0.30 (dynamic 80/10/10 + special-token guard), lr 2e-4,
+# AdamW betas (0.9, 0.98), bf16, best-checkpoint by all-reduced val loss.
+# Converged cleanly from random init at this LR -- no instability, unlike
+# BERT-base from random init (see docs/EXPERIMENTS-2X2.md's LR postmortem).
 #
-# Fresh-init (ARM 4): pretrained_model: null  -> everything random.
-# Warm-start (ARM 3): set pretrained_model to a ModernBERT Greek checkpoint
-#   that was exported with the 50k BPE (e.g. the arm-4 export). The trunk
-#   weights are loaded; the LM head is re-sized to 50368 by the vocab fix in
-#   train.py and re-learned. (This is the audit's "distill / re-init
-#   embeddings" idea, applied to the trunk.)
+# This file is pretrained_model: null only -- it is model 4's config, not a
+# warm-start config. The "warm-start from a ModernBERT checkpoint" design
+# that used to live here (the original arm 3) was retired; the live
+# ModernBERT-warm-start work is now "model 5" (the two-stage comparison with
+# real aristoBERTo's own training history), which lives in a SEPARATE file:
+# configs/train-modernbert-fast.yaml.
 #
 # Launch (submit from the project root):
-#   # arm 4 (fully from scratch):
-#   RUN_NAME=modernbert-bpe-scratch TOKENIZED_DATASET_PATH=data/greekbpe_tokenized_open_greek_dataset_v2 \
-#     CONFIG_PATH=configs/train-modernbert.yaml sbatch slurm/pretrain.sh
-#   # arm 3 (warm-start from the arm-4 export):
-#   PRETRAINED_MODEL=runs/modernbert-bpe-scratch/hf_format \
+#   RUN_NAME=arm4-modernbert-scratch \
 #     TOKENIZED_DATASET_PATH=data/greekbpe_tokenized_open_greek_dataset_v2 \
 #     CONFIG_PATH=configs/train-modernbert.yaml sbatch slurm/pretrain.sh
 #
-# NOTE: the BPE arm needs the Greek-BPE tokenized corpus (different vocab),
-# built with:  python scripts/prepare_data.py \
-#                 --tokenizer tokenizers/modernbert-greek-tokenizer \
+# NOTE: needs the Greek-BPE tokenized corpus (different vocab from models
+# 1-3), built with:  python scripts/prepare_data.py \
+#                 --tokenizer tokenizers/modernbert-greek-tokenizer-v2 \
 #                 --out data/greekbpe_tokenized_open_greek_dataset_v2
 # =============================================================================
 
