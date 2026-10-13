@@ -58,7 +58,13 @@ fi
 # happened to point to, even when MODEL_DIR was explicitly resolved and validated
 # above to something else. Override it on the CLI with the resolved path so the
 # encoder spaCy actually trains from matches what this script printed as "Base model".
-SPACY_CODE_ARG+=(--components.transformer.model.name "$MODEL_DIR_REAL")
+# NOTE: train-only override, kept in a SEPARATE array from SPACY_CODE_ARG --
+# spacy evaluate loads the already-trained pipeline from disk (no --components.*
+# overrides accepted there), but DOES need --code to re-register custom
+# factories (frequency_lemmatizer) the same as train does. Confirmed the hard
+# way: evaluate failed with "Can't find factory for 'frequency_lemmatizer'"
+# when --code was only passed to train.
+SPACY_TRAIN_ARG=("${SPACY_CODE_ARG[@]}" --components.transformer.model.name "$MODEL_DIR_REAL")
 
 # Reports the REAL node identity: SLURM_JOB_ID can be inherited by a shell that
 # never ran under sbatch, so printing it alone was misleading.
@@ -84,12 +90,13 @@ py_run spacy "$SPACY_DIR" \
     --paths.dev corpus/dev.spacy \
     --gpu-id 0 \
     --output "$SPACY_OUT" \
-    "${SPACY_CODE_ARG[@]}"
+    "${SPACY_TRAIN_ARG[@]}"
 stage_done "spaCy train"
 
 stage "spaCy evaluate"
 py_run spacy "$SPACY_DIR" \
   spacy evaluate "$SPACY_OUT/model-best" corpus/test.spacy \
     --gpu-id 0 \
-    --output "$SPACY_OUT/eval_results.json"
+    --output "$SPACY_OUT/eval_results.json" \
+    "${SPACY_CODE_ARG[@]}"
 stage_done "spaCy evaluate -> $SPACY_OUT/eval_results.json"

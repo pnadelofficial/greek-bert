@@ -67,7 +67,14 @@ fi
 # saw $MODEL_DIR. Without this override, spaCy trained from whatever models/current
 # pointed to instead of this run's own export ($HF_EXPORT_DIR) -- the same class of
 # bug as the WSD mismatch this file already guards against above.
-SPACY_CODE_ARG+=(--components.transformer.model.name "$MODEL_DIR_REAL")
+# NOTE: this override is train-only (it reconstructs a FRESH pipeline from the
+# cfg). Kept in a SEPARATE array from SPACY_CODE_ARG -- spacy evaluate loads
+# the already-trained pipeline from disk and does not take --components.*
+# overrides at all; passing them there would error. --code, by contrast, is
+# needed by BOTH: evaluate re-registers factories (frequency_lemmatizer) from
+# scratch too, the same as train. Confirmed the hard way: evaluate failed with
+# "Can't find factory for 'frequency_lemmatizer'" when it only got passed to train.
+SPACY_TRAIN_ARG=("${SPACY_CODE_ARG[@]}" --components.transformer.model.name "$MODEL_DIR_REAL")
 
 run_stage() { [[ ",$STAGES," == *",$1,"* ]]; }
 
@@ -165,7 +172,7 @@ if run_stage spacy; then
       --paths.dev corpus/dev.spacy \
       --gpu-id 0 \
       --output "$RUN_DIR/spacy" \
-      "${SPACY_CODE_ARG[@]}"
+      "${SPACY_TRAIN_ARG[@]}"
 
   stage_done "spaCy train"
 
@@ -173,7 +180,8 @@ if run_stage spacy; then
   py_run spacy "$SPACY_DIR" \
     spacy evaluate "$RUN_DIR/spacy/model-best" corpus/test.spacy \
       --gpu-id 0 \
-      --output "$RUN_DIR/spacy/eval_results.json"
+      --output "$RUN_DIR/spacy/eval_results.json" \
+      "${SPACY_CODE_ARG[@]}"
   stage_done "spaCy eval -> $RUN_DIR/spacy/eval_results.json"
 fi
 
