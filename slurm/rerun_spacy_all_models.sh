@@ -48,7 +48,7 @@ RUN_NAMES=(
 for name in "${RUN_NAMES[@]}"; do
   echo "Submitting spaCy rerun for $name ..."
   RUN_NAME="$name" STAGES=spacy SPACY_CONFIG=configs/gpu_default.cfg \
-    sbatch -n 1 --gres=blackwell:b200:1 slurm/posttrain.sh
+    sbatch -n 1 --gres=gpu:b200:1 slurm/posttrain.sh
 done
 
 echo ""
