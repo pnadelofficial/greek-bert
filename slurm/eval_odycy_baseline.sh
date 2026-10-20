@@ -43,13 +43,31 @@
 
 set -euo pipefail
 
-PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-cd "$PROJECT_ROOT"
+# NOTE: deliberately NOT using `${BASH_SOURCE[0]}`-based self-location here
+# (the `cd "$(dirname "${BASH_SOURCE[0]}")/.."` pattern slurm/env.sh uses when
+# SOURCED). This script is run directly by sbatch, and on this cluster sbatch
+# stages/copies the submitted script into /var/spool/slurm/... before
+# executing it -- so for a directly-submitted script, ${BASH_SOURCE[0]}
+# resolves to that spool path, not the original slurm/eval_odycy_baseline.sh
+# location (confirmed: this exact bug created .odycy_eval_venv under
+# /var/spool/slurm the first time). Every other script in this project avoids
+# this because they `source "slurm/env.sh"` (a literal relative-path string,
+# which only needs the CWD to already be the project root -- true because
+# every job here is submitted from there by convention; sbatch preserves the
+# submission directory as the job's CWD even though it relocates the script
+# file itself). Just rely on that same convention directly instead.
+if [[ ! -d slurm || ! -d spacy_code ]]; then
+  echo "ERROR: this doesn't look like the project root (no slurm/ or" >&2
+  echo "       spacy_code/ in the current directory). Submit from the" >&2
+  echo "       project root: sbatch slurm/eval_odycy_baseline.sh" >&2
+  exit 1
+fi
 
 echo "Host : $(hostname) (SLURMD_NODENAME=${SLURMD_NODENAME:-n/a})"
 echo "Job  : ${SLURM_JOB_ID:-<not under SLURM; running interactively>}"
+echo "CWD  : $(pwd)"
 
-ENV_DIR="${ODYCY_ENV_DIR:-$PROJECT_ROOT/.odycy_eval_venv}"
+ENV_DIR="${ODYCY_ENV_DIR:-.odycy_eval_venv}"
 WHEEL_URL="${ODYCY_WHEEL_URL:-https://huggingface.co/chcaa/grc_odycy_joint_trf/resolve/main/grc_odycy_joint_trf-0.7.0-py3-none-any.whl}"
 TEST_SPACY="${TEST_SPACY:-spacy_code/corpus/test.spacy}"
 OUT="${OUT:-results/odycy_eval_results.json}"
