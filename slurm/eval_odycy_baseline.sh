@@ -101,8 +101,21 @@ else
   # unstated assumption. Pinning typer back into the era spaCy 3.7.x was
   # actually built against restores the old (click-bundling) behavior; the
   # explicit click pin is a belt-and-suspenders safety net on top of that.
+  #
+  # numpy pinned <2.0 -- same class of problem, confirmed via traceback, not
+  # a guess: thinc==8.2.x (the version spaCy 3.7.5 pulls in) ships a
+  # Cython-compiled extension (thinc/backends/numpy_ops.pyx) built against
+  # NumPy's OLD C-API/ABI. NumPy 2.0 made a deliberate, documented BREAKING
+  # ABI change (that's specifically why it was a major version bump) --
+  # thinc 8.2.4 was never rebuilt against it, so loading that compiled
+  # extension under numpy 2.x fails with "numpy.dtype size changed, may
+  # indicate binary incompatibility." thinc's own numpy constraint is just a
+  # loose lower bound (no upper bound), so uv picked the newest numpy (2.4.6)
+  # by default, same root pattern as the typer/click issue above: an old,
+  # unmaintained package's loose dependency range doesn't anticipate a LATER
+  # breaking change in a transitive dependency.
   uv pip install --python "$ENV_DIR/bin/python" \
-    "spacy>=3.7.4,<3.8.0" "typer>=0.3,<0.10" "click>=8.0,<9.0" "$WHEEL_URL"
+    "spacy>=3.7.4,<3.8.0" "typer>=0.3,<0.10" "click>=8.0,<9.0" "numpy<2.0" "$WHEEL_URL"
 fi
 
 echo ""
