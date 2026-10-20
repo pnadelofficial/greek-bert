@@ -72,6 +72,7 @@ downstream suite, which is what model 5 was built to answer.
 | 4 — fresh ModernBERT | 90.90 | 94.90 | 91.98 | 85.09 | 76.23 | 70.63 | 78.85 |
 | 5 — ModernBERT, aristoBERTo-shaped history | 92.14 | 95.69 | 93.05 | **85.59** | 80.44 | 75.46 | 82.27 |
 | *odyCy (`chcaa/grc_odycy_joint_trf`, external, real eval)* | *92.77* | *95.57* | *93.16* | *87.76* | *79.31* | *72.98* | *84.48* |
+| *LatinCy (`latincy/grc_dep_web_trf`, external, real eval)* | n/a¹ | *92.78* | *81.20* | *94.76*² | *75.92* | *63.84* | *68.62*³ |
 
 odyCy's row here is a REAL, controlled re-run (`slurm/eval_odycy_baseline.sh`
 + `scripts/eval_external_spacy_model.py`), not the self-reported `meta.json`
@@ -84,6 +85,36 @@ comparison still isn't apples-to-apples: odyCy's 87.76 already includes
 their lexicon layer, and model 1's 84.36 above doesn't yet. Once our own
 lexicon is rebuilt and applied to model 1 (next step), that's the real
 LEMMA-vs-odyCy comparison to look at.
+
+LatinCy (`slurm/eval_latincy_baseline.sh`), same real/controlled methodology.
+Three caveats on this row, in order of how much they matter:
+1. **TAG is not comparable at all, not just low.** Confirmed directly (not
+   assumed): gold `tag_` uses Perseus-style 9-character positional
+   morphology codes (`v3ppia---`), LatinCy predicts plain English category
+   words (`'verb'`, `'determiner'`) -- completely different tagsets with zero
+   possible string overlap, hence the literal `0.0` this produced before we
+   checked (omitted here rather than shown as a bare, misleading number).
+   `pos_acc` (the standardized UPOS layer) is unaffected and is a real,
+   comparable number.
+2. **LEMMA likely underestimates this model's true capability.** Its
+   packaged tokenizer normalizes 4 different Unicode encodings of the
+   elision apostrophe before its lookup-lemmatizer runs; our gold-tokenized
+   eval bypasses every external pipeline's own tokenizer (same as odyCy, for
+   fair alignment against UD's standard tokenization), so that normalization
+   never happens here.
+3. **SENT_F hides a large precision/recall imbalance** (sents_p 91.68 vs
+   sents_r 54.82) -- LatinCy's `senter` component predicts far fewer
+   sentence boundaries than gold. Possibly a real difference in how they
+   define sentence boundaries, possibly influenced by our own `-n 10`
+   sentence-grouping convention (from `spacy convert`) not matching whatever
+   document granularity their `senter` was tuned on. Not confirmed either
+   way -- flagged, not resolved.
+
+With those caveats, model 1 still leads on every genuinely comparable metric
+(POS, MORPH, UAS, LAS, SENT_F), and is close enough on LEMMA (84.36 vs 94.76)
+that the normalization caveat above could plausibly explain some or all of
+the gap -- not a claim to make with confidence either way without redoing
+their tokenizer's normalization step ourselves, which we haven't done.
 
 All percentages, no lemma lexicon applied yet (that's the next step, see
 below). **Model 1 is still the overall winner on every metric except raw
