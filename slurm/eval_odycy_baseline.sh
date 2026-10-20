@@ -84,13 +84,25 @@ if [[ -d "$ENV_DIR" ]]; then
   echo "Already present at $ENV_DIR -- skipping creation. Delete it first to rebuild."
 else
   uv venv "$ENV_DIR" --python 3.11
-  # ONE install call for both the spacy constraint and the wheel together --
-  # letting uv resolve odyCy's full dependency tree (spacy, spacy-transformers,
-  # thinc, torch, click/typer, ...) in a single pass. Two separate calls here
-  # previously (spacy first, then the wheel) let each resolve somewhat
-  # independently instead of solving the whole graph together, which is a
-  # real source of "a transitive dependency went missing" problems.
-  uv pip install --python "$ENV_DIR/bin/python" "spacy>=3.7.4,<3.8.0" "$WHEEL_URL"
+  # ONE install call for everything together -- letting uv resolve odyCy's
+  # full dependency tree (spacy, spacy-transformers, thinc, torch, ...) in a
+  # single pass rather than two separate calls that could each resolve
+  # somewhat independently.
+  #
+  # typer/click pinned explicitly -- confirmed root cause (not a guess):
+  # spaCy 3.7.5's own code does `from click import NoSuchOption` directly in
+  # spacy/cli/_util.py, assuming click is always pulled in transitively via
+  # typer (true for the typer versions spaCy 3.7.x actually shipped against).
+  # Very recent typer releases (0.2x+) moved their real implementation into a
+  # separate `typer-slim` package that does NOT pull in click by default --
+  # uv's resolver, given only spaCy's own loose/unconstrained typer
+  # requirement, picked the newest typer (confirmed via the install log:
+  # typer==0.27.3 + typer-slim==0.24.0, no click at all), breaking spaCy's
+  # unstated assumption. Pinning typer back into the era spaCy 3.7.x was
+  # actually built against restores the old (click-bundling) behavior; the
+  # explicit click pin is a belt-and-suspenders safety net on top of that.
+  uv pip install --python "$ENV_DIR/bin/python" \
+    "spacy>=3.7.4,<3.8.0" "typer>=0.3,<0.10" "click>=8.0,<9.0" "$WHEEL_URL"
 fi
 
 echo ""
