@@ -84,11 +84,13 @@ if [[ -d "$ENV_DIR" ]]; then
   echo "Already present at $ENV_DIR -- skipping creation. Delete it first to rebuild."
 else
   uv venv "$ENV_DIR" --python 3.11
-  # Let uv resolve odyCy's full dependency tree (spacy, spacy-transformers,
-  # thinc, torch, ...) itself rather than specifying it by hand -- pin only
-  # the top-level constraint odyCy's own meta.json declares.
-  uv pip install --python "$ENV_DIR/bin/python" "spacy>=3.7.4,<3.8.0"
-  uv pip install --python "$ENV_DIR/bin/python" "$WHEEL_URL"
+  # ONE install call for both the spacy constraint and the wheel together --
+  # letting uv resolve odyCy's full dependency tree (spacy, spacy-transformers,
+  # thinc, torch, click/typer, ...) in a single pass. Two separate calls here
+  # previously (spacy first, then the wheel) let each resolve somewhat
+  # independently instead of solving the whole graph together, which is a
+  # real source of "a transitive dependency went missing" problems.
+  uv pip install --python "$ENV_DIR/bin/python" "spacy>=3.7.4,<3.8.0" "$WHEEL_URL"
 fi
 
 echo ""
