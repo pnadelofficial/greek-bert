@@ -71,6 +71,19 @@ downstream suite, which is what model 5 was built to answer.
 | 3 — fresh BERT (control) | 79.70 | 87.94 | 80.79 | 76.36 | 57.13 | 49.67 | 53.60 |
 | 4 — fresh ModernBERT | 90.90 | 94.90 | 91.98 | 85.09 | 76.23 | 70.63 | 78.85 |
 | 5 — ModernBERT, aristoBERTo-shaped history | 92.14 | 95.69 | 93.05 | **85.59** | 80.44 | 75.46 | 82.27 |
+| *odyCy (`chcaa/grc_odycy_joint_trf`, external, real eval)* | *92.77* | *95.57* | *93.16* | *87.76* | *79.31* | *72.98* | *84.48* |
+
+odyCy's row here is a REAL, controlled re-run (`slurm/eval_odycy_baseline.sh`
++ `scripts/eval_external_spacy_model.py`), not the self-reported `meta.json`
+numbers used before the Perseus fix -- odyCy was installed in its own
+isolated venv and scored against this exact same `corpus/test.spacy`, same
+`Scorer`, same everything. This finally supersedes the old "different eval
+composition" caveat entirely. **Model 1 beats odyCy on every metric except
+LEMMA** (e.g. SENT_F 87.94 vs 84.48, LAS 80.96 vs 72.98) -- but that LEMMA
+comparison still isn't apples-to-apples: odyCy's 87.76 already includes
+their lexicon layer, and model 1's 84.36 above doesn't yet. Once our own
+lexicon is rebuilt and applied to model 1 (next step), that's the real
+LEMMA-vs-odyCy comparison to look at.
 
 All percentages, no lemma lexicon applied yet (that's the next step, see
 below). **Model 1 is still the overall winner on every metric except raw
@@ -100,15 +113,6 @@ exists to test: matching model 2's training-history shape helps ModernBERT's
 downstream performance even though it doesn't win on the pretraining
 objective itself. Still behind models 1/2 (the BERT continuations) on
 UAS/LAS/SENT_F, though closer than model 4 was.
-
-**odyCy comparison pending re-pull.** The external odyCy reference row that
-used to sit here (`chcaa/grc_odycy_joint_trf`'s `meta.json`) was compared
-against our old PROIEL-only numbers with a "different eval composition"
-caveat. Now that our corpus is genuinely PROIEL+Perseus combined, that
-comparison is worth redoing properly -- but the LEMMA side of it specifically
-isn't apples-to-apples right now anyway, since odyCy's published number
-includes their lexicon layer and ours above doesn't yet. Re-add this
-comparison after the lexicon pass below.
 
 ## Lemmatizer lexicon ablation (models 1, 2, and 5) -- SUPERSEDED, built on the PROIEL-only corpus
 
