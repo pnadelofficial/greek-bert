@@ -33,6 +33,7 @@ stage either. See "Model 5" for the real plan.
 | 3 | Fresh BERT on new data (control) | BERT-base | nlpaueb 35k WP | random | `configs/train-bert-fresh.yaml` | same as model 1 | `arm2-bert-fresh` | done |
 | 4 | Fresh ModernBERT on new data | ModernBERT | Greek 50k BPE | random | `configs/train-modernbert.yaml` | `greekbpe_tokenized_open_greek_dataset_v2` | `arm4-modernbert-scratch` | done |
 | 5 | ModernBERT through aristoBERTo's own 2-stage history, then new data | ModernBERT | Greek 50k BPE | modern Greek -> First1KGreek -> new data | `configs/train-modernbert-fast.yaml` (3 launches) | see "Model 5" below | `modernbert-stage{1,2,3}-*` | **in progress** |
+| 6 | bowphs/GreBerta fine-tuned on new data | RoBERTa-base | GreBerta's own 52k BPE | GreBerta continued | `configs/train.yaml` + `PRETRAINED_MODEL=bowphs/GreBerta` | `greberta_tokenized_open_greek_dataset_v2` | `model6-greberta-continuation` | **planned** |
 
 Note: models 1/3/4's WSD numbers predate the aristoBERTo-baseline identity
 fix and need rerunning (`STAGES=wsd`) -- see `wsd/wsd.py`'s `DEFAULT_BASELINE`
@@ -212,4 +213,57 @@ RUN_NAME=modernbert-stage3-final \
 
 # Then the usual downstream pipeline on the stage-3 run:
 RUN_NAME=modernbert-stage3-final sbatch slurm/posttrain.sh
+```
+
+## Model 6 (bowphs/GreBerta)
+
+Missed in the original candidate sweep -- a RoBERTa-base Ancient Greek MLM
+(`bowphs/GreBerta`, 12-layer, 52k BPE vocab, trained on PROIEL + Perseus +
+other UD/treebank-adjacent Ancient Greek corpora) that reports better numbers
+than our GreekBERT-continuation arm (model 1) on its own (Perseus-only) eval.
+Two separate, sequential deliverables:
+
+1. **Zero-shot baseline eval** -- score the published checkpoint as-is
+   against this project's own held-out validation split, the same "real,
+   controlled eval" treatment odyCy/LatinCy got on the spaCy side
+   (`results/model-comparison.md`). This is NOT part of the pretraining-arm
+   table above; it is a reference point for how GreBerta's own training
+   compares on OUR corpus before we touch it.
+2. **Continuation pretraining** ("model 6" in the table above) -- same
+   recipe as models 1/2 (`configs/train.yaml`, just override
+   `PRETRAINED_MODEL`), continuing GreBerta on this project's own new corpus,
+   so it becomes directly comparable to models 1/2 (same final-stage corpus,
+   different starting checkpoint).
+
+GreBerta's tokenizer (RoBERTa-style 52k BPE) is unrelated to nlpaueb's 35k
+WordPiece vocab models 1-3 share, so it needs its own tokenized copy of the
+corpus first -- same reason model 4/5 needed `greekbpe_tokenized_open_greek_dataset_v2`
+instead of reusing the WordPiece one. `AutoModelForMaskedLM`/`AutoConfig` in
+`train.py` and the new `scripts/eval_pretrained_mlm.py` are architecture-
+agnostic already (dispatch off `config.model_type`), so no code changes were
+needed there -- RoBERTa is just another (architecture, tokenizer) pair in the
+same generic pipeline.
+
+```bash
+# 1. Corpus prep (one-off, CPU job) -- builds the GreBerta-tokenizer copy of
+#    the corpus, using prepare_data.py's DEFAULT corpus flags/seed so the
+#    document-level holdout is IDENTICAL to models 1-3's, making val numbers
+#    directly comparable.
+sbatch slurm/prepare_greberta_corpus.sh
+
+# 2. Zero-shot baseline eval (no training) -- scores bowphs/GreBerta as
+#    published against our held-out split.
+TOKENIZED_DATASET_PATH=data/greberta_tokenized_open_greek_dataset_v2 \
+  sbatch slurm/eval_greberta_baseline.sh
+# Results: results/greberta_mlm_eval.json (fold into results/model-comparison.md)
+
+# 3. Continuation pretraining ("model 6")
+RUN_NAME=model6-greberta-continuation \
+  PRETRAINED_MODEL=bowphs/GreBerta \
+  TOKENIZED_DATASET_PATH=data/greberta_tokenized_open_greek_dataset_v2 \
+  CONFIG_PATH=configs/train.yaml sbatch slurm/pretrain.sh
+
+# 4. Usual downstream pipeline on the continuation run:
+RUN_NAME=model6-greberta-continuation sbatch slurm/posttrain.sh
+```
 ```
